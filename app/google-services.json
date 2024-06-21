@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "898233716746",
+    "project_id": "healthmentor-a7934",
+    "storage_bucket": "healthmentor-a7934.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:898233716746:android:4691c53e37defbb0c9cff3",
+        "android_client_info": {
+          "package_name": "com.example.healthmentor"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBqzc9RA-Gpv--nq4ESlPEQ3Cwp4jzlLuU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
