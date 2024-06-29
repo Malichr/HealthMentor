@@ -16,6 +16,7 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        buildConfigField("String", "OPENAI_API_KEY", "\"" + project.property("openai.api.key") + "\"")
     }
 
     buildTypes {
@@ -36,6 +37,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
     composeOptions {
         kotlinCompilerExtensionVersion = "1.4.3"
@@ -62,4 +64,6 @@ dependencies {
     androidTestImplementation(libs.androidx.espresso.core)
     implementation (libs.play.services.auth)
     implementation(libs.play.services.fitness)
+    implementation(libs.okhttp)
+    implementation(libs.okhttp.logging.interceptor)
 }

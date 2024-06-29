@@ -1,9 +1,7 @@
 package com.example.healthmentor
 
 import android.annotation.SuppressLint
-import android.content.BroadcastReceiver
 import android.content.Context
-import android.content.Intent
 import android.content.IntentFilter
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -22,6 +20,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import androidx.navigation.NavController
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInAccount
+import com.google.android.gms.fitness.FitnessOptions
+import com.google.android.gms.fitness.data.DataType
 
 @SuppressLint("UnusedMaterialScaffoldPaddingParameter")
 @Composable
@@ -47,8 +49,10 @@ fun HomeScreen(navController: NavController) {
             intentFilter
         )
 
-        val intent = Intent(context, FitnessDataService::class.java)
-        FitnessDataService.enqueueWork(context, intent)
+        val account = GoogleSignIn.getLastSignedInAccount(context)
+        account?.let {
+            requestFitnessData(context, it)
+        }
     }
 
     Scaffold(
@@ -112,14 +116,12 @@ fun FitnessDataCard(steps: Int, caloriesBurned: Int, distance: Float) {
     }
 }
 
-class HomeScreenBroadcastReceiver(
-    private val onUpdate: (steps: Int, caloriesBurned: Int, distance: Float) -> Unit
-) : BroadcastReceiver() {
+public fun requestFitnessData(context: Context, account: GoogleSignInAccount) {
+    val fitnessOptions = FitnessOptions.builder()
+        .addDataType(DataType.TYPE_STEP_COUNT_DELTA, FitnessOptions.ACCESS_READ)
+        .addDataType(DataType.TYPE_CALORIES_EXPENDED, FitnessOptions.ACCESS_READ)
+        .addDataType(DataType.TYPE_DISTANCE_DELTA, FitnessOptions.ACCESS_READ)
+        .build()
 
-    override fun onReceive(context: Context?, intent: Intent?) {
-        val steps = intent?.getIntExtra("steps", 0) ?: 0
-        val caloriesBurned = intent?.getIntExtra("caloriesBurned", 0) ?: 0
-        val distance = intent?.getFloatExtra("distance", 0f) ?: 0f
-        onUpdate(steps, caloriesBurned, distance)
-    }
+    FitnessDataService.enqueueWork(context, account)
 }

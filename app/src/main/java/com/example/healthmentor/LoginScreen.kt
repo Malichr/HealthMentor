@@ -43,7 +43,6 @@ fun LoginScreen(navController: NavController) {
         )
         Spacer(modifier = Modifier.height(64.dp))
 
-        // Bejelentkezési űrlap és gombok
         Column(
             modifier = Modifier
                 .fillMaxWidth()
