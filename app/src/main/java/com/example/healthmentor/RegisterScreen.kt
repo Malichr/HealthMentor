@@ -1,5 +1,6 @@
 package com.example.healthmentor
 
+import android.util.Log
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.Button
 import androidx.compose.material.Icon
@@ -16,6 +17,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Spa
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.example.healthmentor.models.UserProfile
 
 @Composable
 fun RegisterScreen(navController: NavController) {
@@ -110,20 +112,16 @@ fun RegisterScreen(navController: NavController) {
                                         .createUserWithEmailAndPassword(email, password)
                                         .addOnCompleteListener { task ->
                                             if (task.isSuccessful) {
-                                                val user = hashMapOf(
-                                                    "email" to email,
-                                                    "username" to username
-                                                )
-                                                usersCollection.document(FirebaseAuth.getInstance().currentUser!!.uid)
-                                                    .set(user)
-                                                    .addOnSuccessListener {
+                                                val user = task.result?.user
+                                                if (user != null) {
+                                                    android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                                                        createUserInFirestore(user.uid, email, username)
                                                         navController.navigate("home")
-                                                    }
-                                                    .addOnFailureListener { e ->
-                                                        errorMessage = e.message ?: "Unknown error"
-                                                    }
+                                                    }, 1000)
+                                                }
                                             } else {
-                                                errorMessage = task.exception?.message ?: "Unknown error"
+                                                errorMessage = task.exception?.message ?: "Ismeretlen hiba történt"
+                                                Log.e("RegisterScreen", "Hiba a regisztráció során", task.exception)
                                             }
                                         }
                                 } else {
@@ -145,4 +143,27 @@ fun RegisterScreen(navController: NavController) {
             }
         }
     }
+}
+
+private fun createUserInFirestore(userId: String, email: String, username: String) {
+    val db = FirebaseFirestore.getInstance()
+    val userProfile = mapOf(
+        "userId" to userId,
+        "email" to email,
+        "username" to username,
+        "displayName" to username,
+        "friends" to emptyList<String>(),
+        "friendRequests" to emptyList<String>()
+    )
+
+    db.collection("users")
+        .document(userId)
+        .set(userProfile)
+        .addOnSuccessListener {
+            Log.d("RegisterScreen", "Felhasználó sikeresen létrehozva: $userId")
+        }
+        .addOnFailureListener { e ->
+            Log.e("RegisterScreen", "Hiba a felhasználó létrehozása közben", e)
+            Log.e("RegisterScreen", "Hiba részletei: ${e.message}")
+        }
 }

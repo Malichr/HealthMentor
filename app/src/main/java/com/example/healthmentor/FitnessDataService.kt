@@ -40,7 +40,6 @@ class FitnessDataService : JobIntentService() {
 
             val now = System.currentTimeMillis()
 
-            // Request data for the past day
             val endTime = now
             val startTime = endTime - TimeUnit.DAYS.toMillis(1)
 

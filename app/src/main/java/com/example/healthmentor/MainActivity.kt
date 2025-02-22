@@ -1,11 +1,16 @@
 package com.example.healthmentor
 
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
+import androidx.core.content.pm.PackageInfoCompat
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Surface
 import androidx.compose.runtime.Composable
@@ -17,6 +22,8 @@ import com.google.android.gms.auth.api.signin.GoogleSignInAccount
 import com.google.android.gms.auth.api.signin.GoogleSignInClient
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
+import com.google.android.gms.common.api.Scope
+import com.google.android.gms.fitness.Fitness
 import com.google.android.gms.fitness.FitnessOptions
 import com.google.android.gms.fitness.data.DataType
 import com.google.android.gms.tasks.Task
@@ -27,6 +34,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var googleSignInClient: GoogleSignInClient
     private lateinit var fitnessOptions: FitnessOptions
     private val GOOGLE_FIT_PERMISSIONS_REQUEST_CODE = 1001
+    private val PERMISSION_REQUEST_ACTIVITY_RECOGNITION = 2001
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -52,14 +60,13 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun initializeGoogleSignInClient() {
-        val clientId = getClientIdFromJson()
-        Log.d(TAG, "Client ID: $clientId")
         val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
             .requestEmail()
-            .requestIdToken(clientId)
+            .requestScopes(Scope(Fitness.SCOPE_ACTIVITY_READ.toString()))
+            .requestScopes(Scope(Fitness.SCOPE_BODY_READ.toString()))
             .build()
+        
         googleSignInClient = GoogleSignIn.getClient(this, gso)
-        signInToGoogle()
     }
 
     private fun getClientIdFromJson(): String {
@@ -139,6 +146,29 @@ class MainActivity : ComponentActivity() {
 
     private fun startFitnessDataService(account: GoogleSignInAccount) {
         FitnessDataService.enqueueWork(this, account)
+    }
+
+    private fun checkPermissionsAndStartTracking() {
+        if (ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACTIVITY_RECOGNITION
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            ActivityCompat.requestPermissions(
+                this,
+                arrayOf(Manifest.permission.ACTIVITY_RECOGNITION),
+                PERMISSION_REQUEST_ACTIVITY_RECOGNITION
+            )
+        } else {
+            startFitnessTracking()
+        }
+    }
+
+    private fun startFitnessTracking() {
+        val account = GoogleSignIn.getLastSignedInAccount(this)
+        account?.let {
+            startFitnessDataService(it)
+        }
     }
 
     companion object {

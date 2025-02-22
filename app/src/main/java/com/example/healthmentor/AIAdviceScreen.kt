@@ -7,11 +7,6 @@ import android.content.IntentFilter
 import android.util.Log
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Group
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -19,6 +14,11 @@ import androidx.compose.ui.unit.dp
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import androidx.navigation.NavController
 import com.google.android.gms.auth.api.signin.GoogleSignIn
+import kotlinx.coroutines.launch
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import com.example.healthmentor.components.CommonBottomBar
 
 @SuppressLint("UnusedMaterialScaffoldPaddingParameter")
 @Composable
@@ -31,6 +31,8 @@ fun AIAdviceScreen(navController: NavController) {
     var advice by remember { mutableStateOf("Loading AI advice...") }
 
     val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+    val scrollState = rememberScrollState()
 
     val broadcastReceiver = remember {
         HomeScreenBroadcastReceiver { updatedSteps, updatedCaloriesBurned, updatedDistance ->
@@ -40,9 +42,13 @@ fun AIAdviceScreen(navController: NavController) {
             distance = updatedDistance
 
             val prompt = "I have taken $steps steps, burned $caloriesBurned calories, and walked $distance kilometers today. Can you give me some advice on how to improve my health and fitness?"
-            AIAdviceService.getAIAdvice(prompt) { aiAdvice ->
-                Log.d("AIAdviceScreen", "Received AI advice: $aiAdvice")
-                advice = aiAdvice
+            coroutineScope.launch {
+                try {
+                    val aiAdvice = AIAdviceService.getAIAdvice(prompt)
+                    advice = aiAdvice
+                } catch (e: Exception) {
+                    advice = "Hiba történt: ${e.message}"
+                }
             }
         }
     }
@@ -64,51 +70,67 @@ fun AIAdviceScreen(navController: NavController) {
         }
 
         val testPrompt = "Give me advice on how to improve my health and fitness."
-        AIAdviceService.getAIAdvice(testPrompt) { aiAdvice ->
-            Log.d("AIAdviceScreen", "Test AI advice: $aiAdvice")
+        try {
+            val aiAdvice = AIAdviceService.getAIAdvice(testPrompt)
             advice = aiAdvice
+        } catch (e: Exception) {
+            advice = "Hiba történt: ${e.message}"
         }
     }
 
     Scaffold(
         bottomBar = {
-            BottomNavigation {
-                BottomNavigationItem(
-                    icon = { Icon(Icons.Default.Home, contentDescription = null) },
-                    label = { Text("Home") },
-                    selected = false,
-                    onClick = { navController.navigate("home") }
-                )
-                BottomNavigationItem(
-                    icon = { Icon(Icons.Default.Info, contentDescription = null) },
-                    label = { Text("AI advice") },
-                    selected = true,
-                    onClick = { navController.navigate("ai_advice") }
-                )
-                BottomNavigationItem(
-                    icon = { Icon(Icons.Default.Group, contentDescription = null) },
-                    label = { Text("Challenges") },
-                    selected = false,
-                    onClick = { navController.navigate("challenges") }
-                )
-                BottomNavigationItem(
-                    icon = { Icon(Icons.Default.Settings, contentDescription = null) },
-                    label = { Text("Settings") },
-                    selected = false,
-                    onClick = { navController.navigate("settings") }
-                )
-            }
+            CommonBottomBar(navController = navController, currentRoute = "ai_advice")
         }
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.Center
+                .padding(16.dp)
+                .verticalScroll(scrollState)
         ) {
-            Text("AI Advice Screen")
-            Spacer(modifier = Modifier.height(16.dp))
-            Text(advice)
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 16.dp),
+                elevation = 4.dp
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp)
+                ) {
+                    Text(
+                        text = "Mai fitnesz adatok",
+                        style = MaterialTheme.typography.h6,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                    Text("Lépések: $steps")
+                    Text("Elégetett kalóriák: $caloriesBurned")
+                    Text("Megtett távolság: $distance km")
+                }
+            }
+
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 16.dp),
+                elevation = 4.dp
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp)
+                ) {
+                    Text(
+                        text = "AI Tanácsadó",
+                        style = MaterialTheme.typography.h6,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                    Text(
+                        text = advice,
+                        style = MaterialTheme.typography.body1
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(56.dp))
         }
     }
 }

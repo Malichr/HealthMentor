@@ -13,7 +13,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Logout
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -24,6 +25,8 @@ import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount
 import com.google.android.gms.fitness.FitnessOptions
 import com.google.android.gms.fitness.data.DataType
+import com.google.firebase.auth.FirebaseAuth
+import com.example.healthmentor.components.CommonBottomBar
 
 @SuppressLint("UnusedMaterialScaffoldPaddingParameter")
 @Composable
@@ -57,32 +60,7 @@ fun HomeScreen(navController: NavController) {
 
     Scaffold(
         bottomBar = {
-            BottomNavigation {
-                BottomNavigationItem(
-                    icon = { Icon(Icons.Default.Home, contentDescription = null) },
-                    label = { Text("Home") },
-                    selected = false,
-                    onClick = { navController.navigate("home") }
-                )
-                BottomNavigationItem(
-                    icon = { Icon(Icons.Default.Info, contentDescription = null) },
-                    label = { Text("AI advice") },
-                    selected = false,
-                    onClick = { navController.navigate("ai_advice") }
-                )
-                BottomNavigationItem(
-                    icon = { Icon(Icons.Default.Group, contentDescription = null) },
-                    label = { Text("Challenges") },
-                    selected = false,
-                    onClick = { navController.navigate("challenges") }
-                )
-                BottomNavigationItem(
-                    icon = { Icon(Icons.Default.Settings, contentDescription = null) },
-                    label = { Text("Settings") },
-                    selected = false,
-                    onClick = { navController.navigate("settings") }
-                )
-            }
+            CommonBottomBar(navController = navController, currentRoute = "home")
         }
     ) {
         Column(

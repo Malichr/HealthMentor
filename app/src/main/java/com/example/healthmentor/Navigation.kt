@@ -13,6 +13,6 @@ fun Navigation(navController: NavHostController) {
         composable("home") { HomeScreen(navController) }
         composable("ai_advice") { AIAdviceScreen(navController) }
         composable("challenges") { GroupChallengesScreen(navController) }
-        composable("settings") { SettingsScreen(navController) }
+        composable("friends") { FriendsScreen(navController) }
     }
 }
