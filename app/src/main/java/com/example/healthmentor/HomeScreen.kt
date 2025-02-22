@@ -1,8 +1,13 @@
 package com.example.healthmentor
 
 import android.annotation.SuppressLint
+import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.Intent
 import android.content.IntentFilter
+import android.os.Handler
+import android.os.Looper
+import android.util.Log
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -16,6 +21,7 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -32,29 +38,53 @@ import com.example.healthmentor.components.CommonBottomBar
 @Composable
 fun HomeScreen(navController: NavController) {
     var steps by remember { mutableStateOf(0) }
-    var caloriesBurned by remember { mutableStateOf(0) }
+    var calories by remember { mutableStateOf(0) }
     var distance by remember { mutableStateOf(0f) }
 
-    val broadcastReceiver = remember {
-        HomeScreenBroadcastReceiver { updatedSteps, updatedCaloriesBurned, updatedDistance ->
-            steps = updatedSteps
-            caloriesBurned = updatedCaloriesBurned
-            distance = updatedDistance
-        }
-    }
-
     val context = LocalContext.current
+    DisposableEffect(context) {
+        val receiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context, intent: Intent) {
+                Log.d("HomeScreen", "Received fitness data broadcast")
+                if (intent.action == "fitness_data_updated") {
+                    val newSteps = intent.getIntExtra("steps", 0)
+                    val newCalories = intent.getIntExtra("caloriesBurned", 0)
+                    val newDistance = intent.getFloatExtra("distance", 0f)
+                    
+                    Log.d("HomeScreen", "Received values - Steps: $newSteps, Calories: $newCalories, Distance: $newDistance")
+                    
+                    // Főszálon frissítjük az értékeket
+                    Handler(Looper.getMainLooper()).post {
+                        steps = newSteps
+                        calories = newCalories
+                        distance = newDistance
+                        Log.d("HomeScreen", "Updated UI values - Steps: $steps, Calories: $calories, Distance: $distance")
+                    }
+                }
+            }
+        }
 
-    LaunchedEffect(Unit) {
-        val intentFilter = IntentFilter("fitness_data_updated")
-        LocalBroadcastManager.getInstance(context).registerReceiver(
-            broadcastReceiver,
-            intentFilter
+        val filter = IntentFilter("fitness_data_updated").apply {
+            addCategory(Intent.CATEGORY_DEFAULT)
+        }
+        
+        Log.d("HomeScreen", "Registering broadcast receiver")
+        context.registerReceiver(
+            receiver,
+            filter,
+            Context.RECEIVER_NOT_EXPORTED
         )
 
+        // Indítsuk el a fitness adatok lekérését
         val account = GoogleSignIn.getLastSignedInAccount(context)
         account?.let {
+            Log.d("HomeScreen", "Starting fitness data request")
             requestFitnessData(context, it)
+        }
+
+        onDispose {
+            Log.d("HomeScreen", "Unregistering broadcast receiver")
+            context.unregisterReceiver(receiver)
         }
     }
 
@@ -69,13 +99,13 @@ fun HomeScreen(navController: NavController) {
                 .padding(16.dp),
             verticalArrangement = Arrangement.Center
         ) {
-            FitnessDataCard(steps, caloriesBurned, distance)
+            FitnessDataCard(steps, calories, distance)
         }
     }
 }
 
 @Composable
-fun FitnessDataCard(steps: Int, caloriesBurned: Int, distance: Float) {
+fun FitnessDataCard(steps: Int, calories: Int, distance: Float) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         elevation = 4.dp,
@@ -88,8 +118,8 @@ fun FitnessDataCard(steps: Int, caloriesBurned: Int, distance: Float) {
         ) {
             Text("Fitness Data")
             Text("Steps: $steps")
-            Text("Calories Burned: $caloriesBurned")
-            Text("Distance: ${distance} km")
+            Text("Calories Burned: $calories")
+            Text("Distance: ${String.format("%.2f", distance)} m")
         }
     }
 }

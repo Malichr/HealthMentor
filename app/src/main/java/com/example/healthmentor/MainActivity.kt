@@ -7,14 +7,10 @@ import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import androidx.core.content.pm.PackageInfoCompat
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Surface
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.navigation.compose.rememberNavController
 import com.example.healthmentor.ui.theme.HealthMentorTheme
 import com.google.android.gms.auth.api.signin.GoogleSignIn
@@ -26,18 +22,42 @@ import com.google.android.gms.common.api.Scope
 import com.google.android.gms.fitness.Fitness
 import com.google.android.gms.fitness.FitnessOptions
 import com.google.android.gms.fitness.data.DataType
-import com.google.android.gms.tasks.Task
-import org.json.JSONObject
-import java.io.InputStream
 
 class MainActivity : ComponentActivity() {
     private lateinit var googleSignInClient: GoogleSignInClient
     private lateinit var fitnessOptions: FitnessOptions
     private val GOOGLE_FIT_PERMISSIONS_REQUEST_CODE = 1001
     private val PERMISSION_REQUEST_ACTIVITY_RECOGNITION = 2001
+    private val RC_SIGN_IN = 9001
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        Log.d(TAG, "Initializing Fitness options and Google Sign In")
+        
+        fitnessOptions = FitnessOptions.builder()
+            .addDataType(DataType.TYPE_STEP_COUNT_DELTA, FitnessOptions.ACCESS_READ)
+            .addDataType(DataType.TYPE_CALORIES_EXPENDED, FitnessOptions.ACCESS_READ)
+            .addDataType(DataType.TYPE_DISTANCE_DELTA, FitnessOptions.ACCESS_READ)
+            .build()
+
+        val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+            .requestEmail()
+            .requestScopes(Scope(Fitness.SCOPE_ACTIVITY_READ.toString()))
+            .requestScopes(Scope(Fitness.SCOPE_BODY_READ.toString()))
+            .build()
+
+        googleSignInClient = GoogleSignIn.getClient(this, gso)
+
+        val account = GoogleSignIn.getLastSignedInAccount(this)
+        if (account != null) {
+            Log.d(TAG, "Found existing Google account: ${account.email}")
+            checkGoogleFitPermissions(account)
+        } else {
+            Log.d(TAG, "No Google account found, initiating sign in")
+            signInToGoogle()
+        }
+
         setContent {
             HealthMentorTheme {
                 val navController = rememberNavController()
@@ -46,93 +66,17 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
-
-        initializeFitnessOptions()
-        initializeGoogleSignInClient()
     }
-
-    private fun initializeFitnessOptions() {
-        fitnessOptions = FitnessOptions.builder()
-            .addDataType(DataType.TYPE_STEP_COUNT_DELTA, FitnessOptions.ACCESS_READ)
-            .addDataType(DataType.TYPE_CALORIES_EXPENDED, FitnessOptions.ACCESS_READ)
-            .addDataType(DataType.TYPE_DISTANCE_DELTA, FitnessOptions.ACCESS_READ)
-            .build()
-    }
-
-    private fun initializeGoogleSignInClient() {
-        val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-            .requestEmail()
-            .requestScopes(Scope(Fitness.SCOPE_ACTIVITY_READ.toString()))
-            .requestScopes(Scope(Fitness.SCOPE_BODY_READ.toString()))
-            .build()
-        
-        googleSignInClient = GoogleSignIn.getClient(this, gso)
-    }
-
-    private fun getClientIdFromJson(): String {
-        return try {
-            val inputStream: InputStream = resources.openRawResource(R.raw.client_secret_898233716746_a0gvo12io55j8c17p0eb78ekqsqoq9e8_apps_googleusercontent_com)
-            val json = inputStream.bufferedReader().use { it.readText() }
-            val jsonObject = JSONObject(json)
-            jsonObject.getJSONObject("installed").getString("client_id")
-        } catch (e: Exception) {
-            Log.e(TAG, "Error reading client ID from JSON", e)
-            ""
-        }
-    }
-
-    private val signInLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-        Log.d(TAG, "SignInLauncher result: $result")
-        if (result.resultCode == RESULT_OK) {
-            val task: Task<GoogleSignInAccount>? = GoogleSignIn.getSignedInAccountFromIntent(result.data)
-            handleSignInResult(task)
-        } else {
-            Log.e(TAG, "Google Sign-In failed with resultCode: ${result.resultCode}. Result: $result")
-            Log.d(TAG, "Intent data: ${result.data}")
-            result.data?.extras?.let { extras ->
-                val status = extras.get("googleSignInStatus")
-                Log.d(TAG, "Intent extras: googleSignInStatus = $status")
-            }
-        }
-    }
-
 
     private fun signInToGoogle() {
-        googleSignInClient.signOut().addOnCompleteListener(this) {
-            val signInIntent = googleSignInClient.signInIntent
-            signInLauncher.launch(signInIntent)
-        }
+        val signInIntent = googleSignInClient.signInIntent
+        startActivityForResult(signInIntent, RC_SIGN_IN)
     }
 
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode == GOOGLE_FIT_PERMISSIONS_REQUEST_CODE) {
-            if (resultCode == RESULT_OK) {
-                val account = GoogleSignIn.getLastSignedInAccount(this)
-                account?.let {
-                    startFitnessDataService(it)
-                }
-            } else {
-                Log.e(TAG, "Google Fit permissions denied")
-            }
-        }
-    }
-
-    private fun handleSignInResult(completedTask: Task<GoogleSignInAccount>?) {
-        try {
-            val account = completedTask?.getResult(ApiException::class.java)
-            Log.d(TAG, "signInResult:success account=${account?.email}")
-            account?.let {
-                requestGoogleFitPermissions(it)
-            }
-        } catch (e: ApiException) {
-            Log.w(TAG, "signInResult:failed code=" + e.statusCode)
-            Log.w(TAG, "signInResult:failed message=" + e.message)
-        }
-    }
-
-    private fun requestGoogleFitPermissions(account: GoogleSignInAccount) {
+    private fun checkGoogleFitPermissions(account: GoogleSignInAccount) {
+        Log.d(TAG, "Checking Google Fit permissions")
         if (!GoogleSignIn.hasPermissions(account, fitnessOptions)) {
+            Log.d(TAG, "Requesting Google Fit permissions")
             GoogleSignIn.requestPermissions(
                 this,
                 GOOGLE_FIT_PERMISSIONS_REQUEST_CODE,
@@ -140,7 +84,53 @@ class MainActivity : ComponentActivity() {
                 fitnessOptions
             )
         } else {
-            startFitnessDataService(account)
+            Log.d(TAG, "Already have Google Fit permissions")
+            accessGoogleFit(account)
+        }
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        Log.d(TAG, "onActivityResult: requestCode=$requestCode, resultCode=$resultCode")
+        
+        when (requestCode) {
+            RC_SIGN_IN -> {
+                try {
+                    val task = GoogleSignIn.getSignedInAccountFromIntent(data)
+                    val account = task.getResult(ApiException::class.java)
+                    Log.d(TAG, "Google Sign in success: ${account.email}")
+                    checkGoogleFitPermissions(account)
+                } catch (e: ApiException) {
+                    Log.e(TAG, "Google Sign in failed: ${e.statusCode}", e)
+                }
+            }
+            GOOGLE_FIT_PERMISSIONS_REQUEST_CODE -> {
+                if (resultCode == RESULT_OK) {
+                    val account = GoogleSignIn.getLastSignedInAccount(this)
+                    account?.let { 
+                        Log.d(TAG, "Google Fit permissions granted")
+                        accessGoogleFit(it) 
+                    }
+                } else {
+                    Log.e(TAG, "Google Fit permissions denied")
+                }
+            }
+        }
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        when (requestCode) {
+            PERMISSION_REQUEST_ACTIVITY_RECOGNITION -> {
+                if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    val account = GoogleSignIn.getLastSignedInAccount(this)
+                    account?.let { startFitnessDataService(it) }
+                }
+            }
         }
     }
 
@@ -148,26 +138,22 @@ class MainActivity : ComponentActivity() {
         FitnessDataService.enqueueWork(this, account)
     }
 
-    private fun checkPermissionsAndStartTracking() {
+    private fun accessGoogleFit(account: GoogleSignInAccount) {
+        Log.d(TAG, "Accessing Google Fit")
         if (ContextCompat.checkSelfPermission(
                 this,
                 Manifest.permission.ACTIVITY_RECOGNITION
             ) != PackageManager.PERMISSION_GRANTED
         ) {
+            Log.d(TAG, "Requesting Activity Recognition permission")
             ActivityCompat.requestPermissions(
                 this,
                 arrayOf(Manifest.permission.ACTIVITY_RECOGNITION),
                 PERMISSION_REQUEST_ACTIVITY_RECOGNITION
             )
         } else {
-            startFitnessTracking()
-        }
-    }
-
-    private fun startFitnessTracking() {
-        val account = GoogleSignIn.getLastSignedInAccount(this)
-        account?.let {
-            startFitnessDataService(it)
+            Log.d(TAG, "Starting FitnessDataService")
+            startFitnessDataService(account)
         }
     }
 
@@ -175,3 +161,4 @@ class MainActivity : ComponentActivity() {
         private const val TAG = "MainActivity"
     }
 }
+
