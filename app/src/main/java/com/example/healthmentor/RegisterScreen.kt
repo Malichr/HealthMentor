@@ -13,7 +13,6 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
-import com.example.healthmentor.models.UserProfile
 import androidx.compose.material.TextButton
 import androidx.compose.foundation.layout.PaddingValues
 
