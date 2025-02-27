@@ -17,6 +17,9 @@ import com.example.healthmentor.components.*
 import com.example.healthmentor.models.*
 import java.text.SimpleDateFormat
 import java.util.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.foundation.clickable
 
 @SuppressLint("UnusedMaterialScaffoldPaddingParameter")
 @Composable
@@ -84,32 +87,59 @@ fun GroupChallengesScreen(navController: NavController) {
     Scaffold(
         bottomBar = {
             CommonBottomBar(navController = navController, currentRoute = "challenges")
+        },
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = { showCreateGroupDialog = true },
+                backgroundColor = MaterialTheme.colors.primary
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    contentDescription = "Új csoport létrehozása",
+                    tint = MaterialTheme.colors.onPrimary
+                )
+            }
         }
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp)
+        ) {
             if (groupInvites.isNotEmpty()) {
-                GroupInvitesSection(groupInvites) { invite, accepted ->
-                    handleGroupInvite(invite, accepted)
+                Text(
+                    text = "Meghívók",
+                    style = MaterialTheme.typography.h6,
+                    color = MaterialTheme.colors.primary,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+                GroupInvitesList(groupInvites) { invite, accepted ->
+                    handleGroupInviteResponse(invite, accepted)
                 }
+                Divider(modifier = Modifier.padding(vertical = 16.dp))
             }
 
-            Button(
-                onClick = { showCreateGroupDialog = true },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Új csoport létrehozása")
-            }
+            Text(
+                text = "Csoportjaim",
+                style = MaterialTheme.typography.h6,
+                color = MaterialTheme.colors.primary,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
 
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-            ) {
-                items(groups) { group ->
-                    GroupCard(
-                        group = group,
-                        onClick = { selectedGroup = group }
-                    )
+            if (groups.isEmpty()) {
+                Text(
+                    text = "Még nem vagy tagja egy csoportnak sem.",
+                    style = MaterialTheme.typography.body1,
+                    modifier = Modifier.padding(vertical = 8.dp)
+                )
+            } else {
+                LazyColumn {
+                    items(groups) { group ->
+                        GroupItem(
+                            group = group,
+                            onGroupSelected = { selectedGroup = it }
+                        )
+                    }
                 }
             }
         }
@@ -118,12 +148,12 @@ fun GroupChallengesScreen(navController: NavController) {
             CreateGroupDialog(
                 groupName = newGroupName,
                 onGroupNameChange = { newGroupName = it },
-                onDismiss = { 
-                    showCreateGroupDialog = false 
+                onDismiss = {
+                    showCreateGroupDialog = false
                     newGroupName = ""
                 },
                 onCreate = {
-                    createNewGroup(newGroupName, currentUser?.uid)
+                    createNewGroup(newGroupName)
                     showCreateGroupDialog = false
                     newGroupName = ""
                 }
@@ -178,7 +208,7 @@ fun GroupChallengesScreen(navController: NavController) {
                 },
                 onInvite = { friendId ->
                     if (currentUser?.uid == group.ownerId) {
-                        inviteFriendToGroup(group, friendId)
+                        inviteFriendToGroup(group.id, friendId)
                     }
                 },
                 onLeave = {
@@ -201,11 +231,13 @@ fun GroupChallengesScreen(navController: NavController) {
 }
 
 @Composable
-fun GroupItem(group: Group) {
+fun GroupItem(group: Group, onGroupSelected: (Group) -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(8.dp)
+            .clickable { onGroupSelected(group) },
+        elevation = 4.dp
     ) {
         Column(
             modifier = Modifier.padding(16.dp)
@@ -228,14 +260,13 @@ fun GroupItem(group: Group) {
     }
 }
 
-private fun createNewGroup(name: String, userId: String?) {
-    if (userId == null) return
-    
+private fun createNewGroup(name: String) {
+    val currentUser = FirebaseAuth.getInstance().currentUser ?: return
     val db = FirebaseFirestore.getInstance()
     val group = Group(
         name = name,
-        ownerId = userId,
-        members = listOf(userId),
+        ownerId = currentUser.uid,
+        members = listOf(currentUser.uid),
         pendingInvites = emptyList(),
         createdAt = System.currentTimeMillis()
     )
@@ -250,7 +281,7 @@ private fun createNewGroup(name: String, userId: String?) {
         }
 }
 
-private fun inviteFriendToGroup(group: Group, friendId: String) {
+private fun inviteFriendToGroup(groupId: String, friendId: String) {
     val currentUser = FirebaseAuth.getInstance().currentUser ?: return
     val db = FirebaseFirestore.getInstance()
     
@@ -261,8 +292,8 @@ private fun inviteFriendToGroup(group: Group, friendId: String) {
             val friendProfile = document.toObject(UserProfile::class.java)
             if (friendProfile != null) {
                 val groupInvite = GroupInvite(
-                    groupId = group.id,
-                    groupName = group.name,
+                    groupId = groupId,
+                    groupName = "",
                     fromUserId = currentUser.uid,
                     fromUserEmail = currentUser.email ?: "",
                     toUserId = friendId,
@@ -273,14 +304,14 @@ private fun inviteFriendToGroup(group: Group, friendId: String) {
                     .add(groupInvite)
                     .addOnSuccessListener {
                         db.collection("groups")
-                            .document(group.id)
+                            .document(groupId)
                             .update("pendingInvites", FieldValue.arrayUnion(friendId))
                     }
             }
         }
 }
 
-private fun handleGroupInvite(invite: GroupInvite, accepted: Boolean) {
+private fun handleGroupInviteResponse(invite: GroupInvite, accepted: Boolean) {
     val db = FirebaseFirestore.getInstance()
     
     if (accepted) {
@@ -315,62 +346,22 @@ private fun handleGroupInvite(invite: GroupInvite, accepted: Boolean) {
     }
 }
 
-private fun deleteGroup(groupId: String) {
-    val db = FirebaseFirestore.getInstance()
-    
-    db.collection("groups").document(groupId)
-        .delete()
-        .addOnSuccessListener {
-            Log.d("GroupChallenges", "Csoport sikeresen törölve: $groupId")
-        }
-        .addOnFailureListener { e ->
-            Log.e("GroupChallenges", "Hiba a csoport törlése közben", e)
-        }
-}
-
-private fun leaveGroup(groupId: String, userId: String) {
-    val db = FirebaseFirestore.getInstance()
-    
-    db.collection("groups").document(groupId)
-        .update("members", FieldValue.arrayRemove(userId))
-        .addOnSuccessListener {
-            Log.d("GroupChallenges", "Sikeresen kilépett a csoportból: $userId")
-        }
-        .addOnFailureListener { e ->
-            Log.e("GroupChallenges", "Hiba a csoportból való kilépés közben", e)
-    }
-}
-
 @Composable
-fun GroupInvitesSection(
+fun GroupInvitesList(
     invites: List<GroupInvite>,
     onResponse: (GroupInvite, Boolean) -> Unit
 ) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(8.dp)
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
+    invites.forEach { invite ->
+        GroupInviteItem(invite)
+        Button(
+            onClick = { onResponse(invite, true) }
         ) {
-            Text(
-                text = "Csoport meghívások",
-                style = MaterialTheme.typography.h6
-            )
-            invites.forEach { invite ->
-                GroupInviteItem(invite)
-                Button(
-                    onClick = { onResponse(invite, true) }
-                ) {
-                    Text("Elfogadás")
-                }
-                Button(
-                    onClick = { onResponse(invite, false) }
-                ) {
-                    Text("Elutasítás")
-                }
-            }
+            Text("Elfogadás")
+        }
+        Button(
+            onClick = { onResponse(invite, false) }
+        ) {
+            Text("Elutasítás")
         }
     }
 }
@@ -399,4 +390,30 @@ fun GroupInviteItem(invite: GroupInvite) {
             )
         }
     }
+}
+
+private fun deleteGroup(groupId: String) {
+    val db = FirebaseFirestore.getInstance()
+    
+    db.collection("groups").document(groupId)
+        .delete()
+        .addOnSuccessListener {
+            Log.d("GroupChallenges", "Csoport sikeresen törölve: $groupId")
+        }
+        .addOnFailureListener { e ->
+            Log.e("GroupChallenges", "Hiba a csoport törlése közben", e)
+        }
+}
+
+private fun leaveGroup(groupId: String, userId: String) {
+    val db = FirebaseFirestore.getInstance()
+    
+    db.collection("groups").document(groupId)
+        .update("members", FieldValue.arrayRemove(userId))
+        .addOnSuccessListener {
+            Log.d("GroupChallenges", "Sikeresen kilépett a csoportból: $userId")
+        }
+        .addOnFailureListener { e ->
+            Log.e("GroupChallenges", "Hiba a csoportból való kilépés közben", e)
+        }
 }

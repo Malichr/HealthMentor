@@ -2,22 +2,20 @@ package com.example.healthmentor
 
 import android.util.Log
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.Button
-import androidx.compose.material.Icon
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.Text
-import androidx.compose.material.TextField
+import androidx.compose.material.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Spa
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Spa
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.example.healthmentor.models.UserProfile
+import androidx.compose.material.TextButton
+import androidx.compose.foundation.layout.PaddingValues
 
 @Composable
 fun RegisterScreen(navController: NavController) {
@@ -136,6 +134,17 @@ fun RegisterScreen(navController: NavController) {
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text("Regisztráció")
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            TextButton(
+                onClick = { navController.navigateUp() },
+                contentPadding = PaddingValues(0.dp)
+            ) {
+                Text(
+                    text = "Vissza a bejelentkezéshez",
+                    color = MaterialTheme.colors.primary,
+                    style = MaterialTheme.typography.button
+                )
             }
             if (errorMessage.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(16.dp))

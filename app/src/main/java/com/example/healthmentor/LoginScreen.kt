@@ -95,11 +95,15 @@ fun LoginScreen(navController: NavController) {
                 Text("Bejelentkezés")
             }
             Spacer(modifier = Modifier.height(8.dp))
-            Button(
+            TextButton(
                 onClick = { navController.navigate("register") },
-                modifier = Modifier.fillMaxWidth()
+                contentPadding = PaddingValues(0.dp)
             ) {
-                Text("Még nincs fiókod? Regisztrálj!")
+                Text(
+                    text = "Még nincs fiókod? Regisztrálj!",
+                    color = MaterialTheme.colors.primary,
+                    style = MaterialTheme.typography.button
+                )
             }
             if (errorMessage.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(16.dp))
