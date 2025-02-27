@@ -6,6 +6,7 @@ import androidx.compose.material.Icon
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
 import androidx.compose.material.TextField
+import androidx.compose.material.TextButton
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -51,7 +52,7 @@ fun LoginScreen(navController: NavController) {
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                text = "Login",
+                text = "Bejelentkezés",
                 style = MaterialTheme.typography.h4,
                 color = MaterialTheme.colors.primary
             )
@@ -59,7 +60,7 @@ fun LoginScreen(navController: NavController) {
             TextField(
                 value = email,
                 onValueChange = { email = it },
-                label = { Text("Email") },
+                label = { Text("Email cím") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true
             )
@@ -67,7 +68,7 @@ fun LoginScreen(navController: NavController) {
             TextField(
                 value = password,
                 onValueChange = { password = it },
-                label = { Text("Password") },
+                label = { Text("Jelszó") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
                 visualTransformation = PasswordVisualTransformation()
@@ -76,29 +77,29 @@ fun LoginScreen(navController: NavController) {
             Button(
                 onClick = {
                     if (email.isBlank() || password.isBlank()) {
-                        errorMessage = "Please fill out all fields."
+                        errorMessage = "Kérjük töltsd ki az összes mezőt."
                     } else {
                         FirebaseAuth.getInstance()
                             .signInWithEmailAndPassword(email, password)
                             .addOnCompleteListener { task ->
                                 if (task.isSuccessful) {
-                                    navController.navigate("home")
+                                    navController.navigate("activity")
                                 } else {
-                                    errorMessage = "Invalid login credentials."
+                                    errorMessage = "Hibás bejelentkezési adatok."
                                 }
                             }
                     }
                 },
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text("Login")
+                Text("Bejelentkezés")
             }
             Spacer(modifier = Modifier.height(8.dp))
             Button(
                 onClick = { navController.navigate("register") },
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text("Register")
+                Text("Még nincs fiókod? Regisztrálj!")
             }
             if (errorMessage.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(16.dp))

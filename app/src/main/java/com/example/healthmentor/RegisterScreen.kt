@@ -48,7 +48,7 @@ fun RegisterScreen(navController: NavController) {
         )
         Spacer(modifier = Modifier.height(16.dp))
         Text(
-            text = "Register an account",
+            text = "Regisztráció",
             style = MaterialTheme.typography.h4,
             color = MaterialTheme.colors.primary
         )
@@ -64,7 +64,7 @@ fun RegisterScreen(navController: NavController) {
             TextField(
                 value = email,
                 onValueChange = { email = it },
-                label = { Text("Email") },
+                label = { Text("Email cím") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true
             )
@@ -72,7 +72,7 @@ fun RegisterScreen(navController: NavController) {
             TextField(
                 value = username,
                 onValueChange = { username = it },
-                label = { Text("Username") },
+                label = { Text("Felhasználónév") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true
             )
@@ -80,7 +80,7 @@ fun RegisterScreen(navController: NavController) {
             TextField(
                 value = password,
                 onValueChange = { password = it },
-                label = { Text("Password") },
+                label = { Text("Jelszó") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
                 visualTransformation = PasswordVisualTransformation()
@@ -89,7 +89,7 @@ fun RegisterScreen(navController: NavController) {
             TextField(
                 value = confirmPassword,
                 onValueChange = { confirmPassword = it },
-                label = { Text("Confirm Password") },
+                label = { Text("Jelszó megerősítése") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
                 visualTransformation = PasswordVisualTransformation()
@@ -98,9 +98,9 @@ fun RegisterScreen(navController: NavController) {
             Button(
                 onClick = {
                     if (email.isBlank() || username.isBlank() || password.isBlank() || confirmPassword.isBlank()) {
-                        errorMessage = "Please fill out all fields."
+                        errorMessage = "Kérjük töltsd ki az összes mezőt."
                     } else if (password != confirmPassword) {
-                        errorMessage = "Passwords do not match"
+                        errorMessage = "A jelszavak nem egyeznek"
                     } else {
                         val db = FirebaseFirestore.getInstance()
                         val usersCollection = db.collection("users")
@@ -116,7 +116,7 @@ fun RegisterScreen(navController: NavController) {
                                                 if (user != null) {
                                                     android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
                                                         createUserInFirestore(user.uid, email, username)
-                                                        navController.navigate("home")
+                                                        navController.navigate("activity")
                                                     }, 1000)
                                                 }
                                             } else {
@@ -135,7 +135,7 @@ fun RegisterScreen(navController: NavController) {
                 },
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text("Register")
+                Text("Regisztráció")
             }
             if (errorMessage.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(16.dp))

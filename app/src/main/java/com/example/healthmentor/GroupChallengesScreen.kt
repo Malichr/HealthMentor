@@ -338,5 +338,65 @@ private fun leaveGroup(groupId: String, userId: String) {
         }
         .addOnFailureListener { e ->
             Log.e("GroupChallenges", "Hiba a csoportból való kilépés közben", e)
+    }
+}
+
+@Composable
+fun GroupInvitesSection(
+    invites: List<GroupInvite>,
+    onResponse: (GroupInvite, Boolean) -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(8.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Text(
+                text = "Csoport meghívások",
+                style = MaterialTheme.typography.h6
+            )
+            invites.forEach { invite ->
+                GroupInviteItem(invite)
+                Button(
+                    onClick = { onResponse(invite, true) }
+                ) {
+                    Text("Elfogadás")
+                }
+                Button(
+                    onClick = { onResponse(invite, false) }
+                ) {
+                    Text("Elutasítás")
+                }
+            }
         }
+    }
+}
+
+@Composable
+fun GroupInviteItem(invite: GroupInvite) {
+    Card(
+            modifier = Modifier
+            .fillMaxWidth()
+            .padding(8.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Text(
+                text = invite.groupName,
+                style = MaterialTheme.typography.h6
+            )
+            Text(
+                text = "Küldő: ${invite.fromUserEmail}",
+                style = MaterialTheme.typography.body1
+            )
+            Text(
+                text = "Címzett: ${invite.toUserEmail}",
+                style = MaterialTheme.typography.body2
+            )
+        }
+    }
 }

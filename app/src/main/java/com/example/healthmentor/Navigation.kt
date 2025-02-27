@@ -10,7 +10,7 @@ fun Navigation(navController: NavHostController) {
     NavHost(navController, startDestination = "login") {
         composable("login") { LoginScreen(navController) }
         composable("register") { RegisterScreen(navController) }
-        composable("home") { HomeScreen(navController) }
+        composable("activity") { ActivityScreen(navController) }
         composable("ai_advice") { AIAdviceScreen(navController) }
         composable("challenges") { GroupChallengesScreen(navController) }
         composable("friends") { FriendsScreen(navController) }

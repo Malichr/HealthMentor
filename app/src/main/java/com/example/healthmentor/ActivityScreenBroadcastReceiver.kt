@@ -4,7 +4,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 
-class HomeScreenBroadcastReceiver(
+class ActivityScreenBroadcastReceiver(
     private val onUpdate: (steps: Int, caloriesBurned: Int, distance: Float) -> Unit
 ) : BroadcastReceiver() {
 
