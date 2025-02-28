@@ -18,8 +18,13 @@ import com.example.healthmentor.models.*
 import java.text.SimpleDateFormat
 import java.util.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.*
 import androidx.compose.foundation.clickable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.Color
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 
 @SuppressLint("UnusedMaterialScaffoldPaddingParameter")
 @Composable
@@ -48,6 +53,13 @@ fun GroupChallengesScreen(navController: NavController) {
                     groups = snapshot?.documents?.mapNotNull { 
                         it.toObject(Group::class.java)?.copy(id = it.id) 
                     } ?: emptyList()
+                    
+                    selectedGroup?.let { selected ->
+                        val updatedGroup = groups.find { it.id == selected.id }
+                        if (updatedGroup != null && updatedGroup != selected) {
+                            selectedGroup = updatedGroup
+                        }
+                    }
                 }
 
             db.collection("groupInvites")
@@ -65,22 +77,76 @@ fun GroupChallengesScreen(navController: NavController) {
 
             db.collection("users")
                 .document(currentUser.uid)
-                .get()
-                .addOnSuccessListener { document ->
-                    val userProfile = document.toObject(UserProfile::class.java)
+                .addSnapshotListener { snapshot, e ->
+                    if (e != null) {
+                        Log.e("GroupChallenges", "Hiba a felhasználó adatainak figyelése közben", e)
+                        return@addSnapshotListener
+                    }
+                    
+                    val userProfile = snapshot?.toObject(UserProfile::class.java)
                     userProfile?.friends?.let { friendIds ->
                         if (friendIds.isNotEmpty()) {
                             db.collection("users")
                                 .whereIn("userId", friendIds)
-                                .get()
-                                .addOnSuccessListener { documents ->
-                                    friends = documents.mapNotNull { 
+                                .addSnapshotListener { friendsSnapshot, friendsError ->
+                                    if (friendsError != null) {
+                                        Log.e("GroupChallenges", "Hiba a barátok figyelése közben", friendsError)
+                                        return@addSnapshotListener
+                                    }
+                                    friends = friendsSnapshot?.documents?.mapNotNull { 
                                         it.toObject(UserProfile::class.java) 
+                                    } ?: emptyList()
+                                }
+                        } else {
+                            friends = emptyList()
+                        }
+                    }
+                }
+        }
+    }
+
+    LaunchedEffect(selectedGroup) {
+        selectedGroup?.let { group ->
+            if (group.members.isNotEmpty()) {
+                db.collection("users")
+                    .whereIn("userId", group.members)
+                    .addSnapshotListener { snapshot, e ->
+                        if (e != null) {
+                            Log.e("GroupChallenges", "Hiba a csoporttagok figyelése közben", e)
+                            return@addSnapshotListener
+                        }
+                        selectedGroupMembers = snapshot?.documents?.mapNotNull { 
+                            it.toObject(UserProfile::class.java)
+                        } ?: emptyList()
+
+                        val today = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+                        memberSteps = emptyList()
+
+                        group.members.forEach { memberId ->
+                            db.collection("stepCounts")
+                                .whereEqualTo("userId", memberId)
+                                .whereEqualTo("date", today)
+                                .addSnapshotListener { stepSnapshot, stepError ->
+                                    if (stepError != null) {
+                                        Log.e("GroupChallenges", "Hiba a lépések figyelése közben", stepError)
+                                        return@addSnapshotListener
+                                    }
+                                    
+                                    val stepCount = stepSnapshot?.documents?.firstOrNull()
+                                        ?.toObject(StepCount::class.java)
+                                    val steps = stepCount?.steps ?: 0
+                                    
+                                    val member = selectedGroupMembers.find { it.userId == memberId }
+                                    if (member != null) {
+                                        memberSteps = memberSteps.filter { it.first.userId != memberId } + (member to steps)
                                     }
                                 }
                         }
                     }
-                }
+            } else {
+                selectedGroupMembers = emptyList()
+                memberSteps = emptyList()
+            }
         }
     }
 
@@ -161,40 +227,6 @@ fun GroupChallengesScreen(navController: NavController) {
         }
 
         selectedGroup?.let { group ->
-            LaunchedEffect(group) {
-                if (group.members.isNotEmpty()) {
-                    db.collection("users")
-                        .whereIn("userId", group.members)
-                        .get()
-                        .addOnSuccessListener { documents ->
-                            selectedGroupMembers = documents.mapNotNull { 
-                                it.toObject(UserProfile::class.java)
-                            }
-
-                            val today = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
-
-                            group.members.forEach { memberId ->
-                                db.collection("stepCounts")
-                                    .whereEqualTo("userId", memberId)
-                                    .whereEqualTo("date", today)
-                                    .get()
-                                    .addOnSuccessListener { stepDocs ->
-                                        val stepCount = stepDocs.documents.firstOrNull()
-                                            ?.toObject(StepCount::class.java)
-                                        val steps = stepCount?.steps ?: 0
-                                        
-                                        val member = selectedGroupMembers.find { it.userId == memberId }
-                                        if (member != null) {
-                                            memberSteps = memberSteps + (member to steps)
-                                        }
-                                    }
-                            }
-                        }
-                } else {
-                    selectedGroupMembers = emptyList()
-                }
-            }
-
             GroupDetailsDialog(
                 group = group,
                 friends = friends,
@@ -285,27 +317,36 @@ private fun inviteFriendToGroup(groupId: String, friendId: String) {
     val currentUser = FirebaseAuth.getInstance().currentUser ?: return
     val db = FirebaseFirestore.getInstance()
     
-    db.collection("users")
-        .document(friendId)
+    db.collection("groups")
+        .document(groupId)
         .get()
-        .addOnSuccessListener { document ->
-            val friendProfile = document.toObject(UserProfile::class.java)
-            if (friendProfile != null) {
-                val groupInvite = GroupInvite(
-                    groupId = groupId,
-                    groupName = "",
-                    fromUserId = currentUser.uid,
-                    fromUserEmail = currentUser.email ?: "",
-                    toUserId = friendId,
-                    toUserEmail = friendProfile.email
-                )
-                
-                db.collection("groupInvites")
-                    .add(groupInvite)
-                    .addOnSuccessListener {
-                        db.collection("groups")
-                            .document(groupId)
-                            .update("pendingInvites", FieldValue.arrayUnion(friendId))
+        .addOnSuccessListener { groupDoc ->
+            val group = groupDoc.toObject(Group::class.java)
+            if (group != null) {
+                db.collection("users")
+                    .document(friendId)
+                    .get()
+                    .addOnSuccessListener { document ->
+                        val friendProfile = document.toObject(UserProfile::class.java)
+                        if (friendProfile != null) {
+                            val groupInvite = GroupInvite(
+                                groupId = groupId,
+                                groupName = group.name,
+                                fromUserId = currentUser.uid,
+                                fromUserEmail = currentUser.email ?: "",
+                                toUserId = friendId,
+                                toUserEmail = friendProfile.email,
+                                status = "pending"
+                            )
+                            
+                            db.collection("groupInvites")
+                                .add(groupInvite)
+                                .addOnSuccessListener {
+                                    db.collection("groups")
+                                        .document(groupId)
+                                        .update("pendingInvites", FieldValue.arrayUnion(friendId))
+                                }
+                        }
                     }
             }
         }
@@ -347,49 +388,250 @@ private fun handleGroupInviteResponse(invite: GroupInvite, accepted: Boolean) {
 }
 
 @Composable
-fun GroupInvitesList(
-    invites: List<GroupInvite>,
-    onResponse: (GroupInvite, Boolean) -> Unit
+fun GroupDetailsDialog(
+    group: Group,
+    friends: List<UserProfile>,
+    currentUserId: String,
+    members: List<UserProfile>,
+    memberSteps: List<Pair<UserProfile, Int>>,
+    onDismiss: () -> Unit,
+    onInvite: (String) -> Unit,
+    onLeave: () -> Unit,
+    onDelete: () -> Unit
 ) {
-    invites.forEach { invite ->
-        GroupInviteItem(invite)
-        Button(
-            onClick = { onResponse(invite, true) }
-        ) {
-            Text("Elfogadás")
+    var showInviteFriendsDialog by remember { mutableStateOf(false) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(group.name) },
+        text = {
+            Column {
+                Text(
+                    "Tagok:",
+                    style = MaterialTheme.typography.h6,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+                memberSteps.forEach { (member, steps) ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(member.email)
+                        Text("$steps lépés")
+                    }
+                }
+
+                if (group.pendingInvites.isNotEmpty() && currentUserId == group.ownerId) {
+                    Divider(modifier = Modifier.padding(vertical = 8.dp))
+                    Text(
+                        "Függő meghívások:",
+                        style = MaterialTheme.typography.h6,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                    friends.filter { friend ->
+                        group.pendingInvites.contains(friend.userId)
+                    }.forEach { friend ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(friend.email)
+                            IconButton(
+                                onClick = { cancelGroupInvite(group.id, friend.userId) }
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "Meghívás visszavonása",
+                                    tint = MaterialTheme.colors.error
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        buttons = {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                if (currentUserId == group.ownerId) {
+                    TextButton(
+                        onClick = onDelete,
+                        colors = ButtonDefaults.textButtonColors(
+                            contentColor = MaterialTheme.colors.error
+                        )
+                    ) {
+                        Text("Csoport törlése")
+                    }
+                    FloatingActionButton(
+                        onClick = { showInviteFriendsDialog = true },
+                        modifier = Modifier.size(40.dp),
+                        backgroundColor = MaterialTheme.colors.primary
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Add,
+                            contentDescription = "Barátok meghívása",
+                            tint = MaterialTheme.colors.onPrimary
+                        )
+                    }
+                } else {
+                    TextButton(
+                        onClick = onLeave,
+                        colors = ButtonDefaults.textButtonColors(
+                            contentColor = MaterialTheme.colors.error
+                        )
+                    ) {
+                        Text("Kilépés")
+                    }
+                }
+                TextButton(onClick = onDismiss) {
+                    Text("Bezárás")
+                }
+            }
         }
-        Button(
-            onClick = { onResponse(invite, false) }
-        ) {
-            Text("Elutasítás")
-        }
+    )
+
+    if (showInviteFriendsDialog) {
+        InviteFriendsDialog(
+            friends = friends,
+            members = members,
+            pendingInvites = group.pendingInvites,
+            onInvite = { friendId ->
+                onInvite(friendId)
+                showInviteFriendsDialog = false
+            },
+            onDismiss = { showInviteFriendsDialog = false }
+        )
     }
 }
 
 @Composable
-fun GroupInviteItem(invite: GroupInvite) {
-    Card(
-            modifier = Modifier
-            .fillMaxWidth()
-            .padding(8.dp)
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
-            Text(
-                text = invite.groupName,
-                style = MaterialTheme.typography.h6
-            )
-            Text(
-                text = "Küldő: ${invite.fromUserEmail}",
-                style = MaterialTheme.typography.body1
-            )
-            Text(
-                text = "Címzett: ${invite.toUserEmail}",
-                style = MaterialTheme.typography.body2
-            )
+fun InviteFriendsDialog(
+    friends: List<UserProfile>,
+    members: List<UserProfile>,
+    pendingInvites: List<String>,
+    onInvite: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Barátok meghívása") },
+        text = {
+            LazyColumn {
+                items(
+                    friends.filter { friend ->
+                        !members.any { it.userId == friend.userId } &&
+                        !pendingInvites.contains(friend.userId)
+                    }
+                ) { friend ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(friend.email)
+                        IconButton(
+                            onClick = { onInvite(friend.userId) }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Add,
+                                contentDescription = "Meghívás",
+                                tint = MaterialTheme.colors.primary
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Bezárás")
+            }
+        }
+    )
+}
+
+@Composable
+fun GroupInvitesList(
+    invites: List<GroupInvite>,
+    onResponse: (GroupInvite, Boolean) -> Unit
+) {
+    LazyColumn {
+        items(invites) { invite ->
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp),
+                elevation = 2.dp
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp)
+                ) {
+                    Text(
+                        text = invite.groupName,
+                        style = MaterialTheme.typography.h6
+                    )
+                    Text(
+                        text = "Meghívó: ${invite.fromUserEmail}",
+                        style = MaterialTheme.typography.body1,
+                        modifier = Modifier.padding(vertical = 4.dp)
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        IconButton(
+                            onClick = { onResponse(invite, true) }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = "Elfogadás",
+                                tint = androidx.compose.ui.graphics.Color.Green
+                            )
+                        }
+                        IconButton(
+                            onClick = { onResponse(invite, false) }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Elutasítás",
+                                tint = MaterialTheme.colors.error
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
+}
+
+private fun cancelGroupInvite(groupId: String, friendId: String) {
+    val db = FirebaseFirestore.getInstance()
+    
+    db.collection("groupInvites")
+        .whereEqualTo("groupId", groupId)
+        .whereEqualTo("toUserId", friendId)
+        .whereEqualTo("status", "pending")
+        .get()
+        .addOnSuccessListener { documents ->
+            documents.forEach { document ->
+                document.reference.delete()
+            }
+            
+            db.collection("groups")
+                .document(groupId)
+                .update("pendingInvites", FieldValue.arrayRemove(friendId))
+        }
 }
 
 private fun deleteGroup(groupId: String) {
