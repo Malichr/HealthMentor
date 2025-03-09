@@ -26,12 +26,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.coroutines.delay
 
 @SuppressLint("UnusedMaterialScaffoldPaddingParameter")
 @Composable
 fun AIAdviceScreen(navController: NavController) {
     var advice by remember { mutableStateOf("AI tanácsok betöltése...") }
     var fitnessData by remember { mutableStateOf(FitnessDataState()) }
+    var dataReceived by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
     val scrollState = rememberScrollState()
     val context = LocalContext.current
@@ -40,6 +43,11 @@ fun AIAdviceScreen(navController: NavController) {
         val receiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context, intent: Intent) {
                 if (intent.action == "fitness_data_updated") {
+                    Log.d("AIAdviceScreen", "Fitnesz adatok frissítve:")
+                    Log.d("AIAdviceScreen", "Napi lépések: ${intent.getIntExtra("dailySteps", 0)}")
+                    Log.d("AIAdviceScreen", "Napi távolság: ${intent.getFloatExtra("distance", 0f)} km")
+                    Log.d("AIAdviceScreen", "Napi kalóriák: ${intent.getIntExtra("caloriesBurned", 0)}")
+                    
                     fitnessData = fitnessData.copy(
                         dailySteps = intent.getIntExtra("dailySteps", 0),
                         dailyDistance = intent.getFloatExtra("distance", 0f),
@@ -56,7 +64,9 @@ fun AIAdviceScreen(navController: NavController) {
                         longestStreak = intent.getIntExtra("longestStreak", 0),
                         currentStreak = intent.getIntExtra("currentStreak", 0)
                     )
-
+                    
+                    dataReceived = true
+                    
                     coroutineScope.launch {
                         advice = AIAdviceService.getAIAdvice(fitnessData)
                     }
@@ -65,20 +75,43 @@ fun AIAdviceScreen(navController: NavController) {
         }
 
         val filter = IntentFilter("fitness_data_updated")
-        context.registerReceiver(receiver, filter, Context.RECEIVER_NOT_EXPORTED)
+        
+        LocalBroadcastManager.getInstance(context).registerReceiver(receiver, filter)
+        
+        val account = GoogleSignIn.getLastSignedInAccount(context)
+        if (account != null) {
+            Log.d("AIAdviceScreen", "FitnessDataService indítása")
+            FitnessDataService.enqueueWork(context, account)
+        }
 
         onDispose {
-            context.unregisterReceiver(receiver)
+            try {
+                LocalBroadcastManager.getInstance(context).unregisterReceiver(receiver)
+            } catch (e: Exception) {
+                Log.e("AIAdviceScreen", "Hiba a receiver kiregisztrálása közben", e)
+            }
         }
     }
 
     LaunchedEffect(Unit) {
-        coroutineScope.launch {
-            try {
-                val aiAdvice = AIAdviceService.getAIAdvice(fitnessData)
-                advice = aiAdvice
-            } catch (e: Exception) {
-                advice = "Hiba történt a tanácsok lekérése közben: ${e.message}"
+        Log.d("AIAdviceScreen", "AI tanács képernyő megnyitva, várakozás az adatokra...")
+        
+        withTimeoutOrNull(5000L) {
+            while (!dataReceived) {
+                delay(100)
+            }
+        }
+        
+        if (!dataReceived) {
+            Log.d("AIAdviceScreen", "Nem érkeztek adatok 5 másodpercen belül, tanács generálása alapértelmezett adatokkal")
+            coroutineScope.launch {
+                try {
+                    val aiAdvice = AIAdviceService.getAIAdvice(fitnessData)
+                    advice = aiAdvice
+                } catch (e: Exception) {
+                    Log.e("AIAdviceScreen", "Hiba a tanácsok lekérése közben", e)
+                    advice = "Hiba történt a tanácsok lekérése közben: ${e.message}"
+                }
             }
         }
     }

@@ -14,6 +14,7 @@ import com.google.android.gms.fitness.data.Field
 import com.google.android.gms.fitness.request.DataReadRequest
 import java.util.concurrent.TimeUnit
 import java.util.Date
+import androidx.localbroadcastmanager.content.LocalBroadcastManager
 
 class FitnessDataService : JobIntentService() {
 
@@ -177,12 +178,12 @@ class FitnessDataService : JobIntentService() {
                                 putExtra("dailySteps", dailySteps)
                                 putExtra("caloriesBurned", totalCalories.toInt())
                                 putExtra("activeCalories", activeCalories.toInt())
-                                putExtra("distance", totalDistance)
+                                putExtra("distance", totalDistance / 1000f)
                                 putExtra("speed", avgSpeed)
                                 putExtra("activityType", activityType)
 
                                 putExtra("totalSteps", totalSteps)
-                                putExtra("totalDistance", totalDistance)
+                                putExtra("totalDistance", totalDistance / 1000f)
                                 putExtra("totalCalories", totalCalories.toInt())
                                 putExtra("activeDays", activeDays)
                                 putExtra("avgStepsPerDay", if (activeDays > 0) totalSteps / activeDays else 0)
@@ -196,7 +197,14 @@ class FitnessDataService : JobIntentService() {
                             }
 
                             Handler(Looper.getMainLooper()).post {
+                                LocalBroadcastManager.getInstance(applicationContext).sendBroadcast(broadcastIntent)
+                                
+                                broadcastIntent.addFlags(Intent.FLAG_RECEIVER_REGISTERED_ONLY)
                                 applicationContext.sendBroadcast(broadcastIntent)
+                                
+                                Log.d(TAG, "Broadcast küldése: dailySteps=${broadcastIntent.getIntExtra("dailySteps", 0)}, " +
+                                        "distance=${broadcastIntent.getFloatExtra("distance", 0f)}, " +
+                                        "calories=${broadcastIntent.getIntExtra("caloriesBurned", 0)}")
                             }
                         }
                 }

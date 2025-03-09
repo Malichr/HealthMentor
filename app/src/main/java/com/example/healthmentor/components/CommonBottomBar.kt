@@ -55,7 +55,12 @@ fun CommonBottomBar(navController: NavController, currentRoute: String) {
         modifier = Modifier.height(56.dp)
     ) {
         BottomNavigationItem(
-            icon = { Icon(Icons.Default.DirectionsRun, contentDescription = "Aktivitás") },
+            icon = { 
+                Icon(
+                    Icons.Default.DirectionsRun, 
+                    contentDescription = "Aktivitás"
+                ) 
+            },
             label = { 
                 Text(
                     "Aktivitás",
@@ -71,10 +76,16 @@ fun CommonBottomBar(navController: NavController, currentRoute: String) {
                 }
             },
             alwaysShowLabel = true,
-            modifier = Modifier.padding(horizontal = 1.dp)
+            modifier = Modifier.padding(0.dp)
         )
+        
         BottomNavigationItem(
-            icon = { Icon(Icons.Default.Info, contentDescription = "AI Tanács") },
+            icon = { 
+                Icon(
+                    Icons.Default.Info, 
+                    contentDescription = "AI Tanács"
+                ) 
+            },
             label = { 
                 Text(
                     "AI Tanács",
@@ -90,23 +101,27 @@ fun CommonBottomBar(navController: NavController, currentRoute: String) {
                 }
             },
             alwaysShowLabel = true,
-            modifier = Modifier.padding(horizontal = 1.dp)
+            modifier = Modifier.padding(0.dp)
         )
+        
         BottomNavigationItem(
             icon = {
                 Box {
-                    Icon(Icons.Default.Group, contentDescription = "Kihívások")
+                    Icon(
+                        Icons.Default.Group, 
+                        contentDescription = "Kihívások"
+                    )
                     if (pendingGroupInvites > 0) {
                         Badge(
                             modifier = Modifier
-                                .size(16.dp)
+                                .size(12.dp)
                                 .clip(CircleShape)
                                 .align(Alignment.TopEnd)
                         ) {
                             Text(
                                 text = pendingGroupInvites.toString(),
-                                fontSize = 10.sp,
-                                modifier = Modifier.padding(2.dp)
+                                fontSize = 8.sp,
+                                modifier = Modifier.padding(0.dp)
                             )
                         }
                     }
@@ -125,23 +140,28 @@ fun CommonBottomBar(navController: NavController, currentRoute: String) {
                 if (currentRoute != "challenges") {
                     navController.navigate("challenges")
                 }
-            }
+            },
+            modifier = Modifier.padding(0.dp)
         )
+        
         BottomNavigationItem(
             icon = {
                 Box {
-                    Icon(Icons.Default.Person, contentDescription = "Barátok")
+                    Icon(
+                        Icons.Default.Person, 
+                        contentDescription = "Barátok"
+                    )
                     if (pendingFriendRequests > 0) {
                         Badge(
                             modifier = Modifier
-                                .size(16.dp)
+                                .size(12.dp)
                                 .clip(CircleShape)
                                 .align(Alignment.TopEnd)
                         ) {
                             Text(
                                 text = pendingFriendRequests.toString(),
-                                fontSize = 10.sp,
-                                modifier = Modifier.padding(2.dp)
+                                fontSize = 8.sp,
+                                modifier = Modifier.padding(0.dp)
                             )
                         }
                     }
@@ -160,10 +180,17 @@ fun CommonBottomBar(navController: NavController, currentRoute: String) {
                 if (currentRoute != "friends") {
                     navController.navigate("friends")
                 }
-            }
+            },
+            modifier = Modifier.padding(0.dp)
         )
+        
         BottomNavigationItem(
-            icon = { Icon(Icons.Default.Logout, contentDescription = "Kijelentkezés") },
+            icon = { 
+                Icon(
+                    Icons.Default.Logout, 
+                    contentDescription = "Kijelentkezés"
+                ) 
+            },
             label = { 
                 Text(
                     "Kijelentkezés",
@@ -180,7 +207,7 @@ fun CommonBottomBar(navController: NavController, currentRoute: String) {
                 }
             },
             alwaysShowLabel = true,
-            modifier = Modifier.padding(horizontal = 1.dp)
+            modifier = Modifier.padding(0.dp)
         )
     }
 } 
