@@ -110,13 +110,24 @@ fun FriendsScreen(navController: NavController) {
     var showAddFriendDialog by remember { mutableStateOf(false) }
     var newFriendEmail by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    var userName by remember { mutableStateOf("") }
 
     val currentUser = FirebaseAuth.getInstance().currentUser
     val db = FirebaseFirestore.getInstance()
 
     LaunchedEffect(Unit) {
         if (currentUser != null) {
-            // Beérkező kérelmek figyelése
+            db.collection("users")
+                .document(currentUser.uid)
+                .get()
+                .addOnSuccessListener { document ->
+                    val user = document.toObject(UserProfile::class.java)
+                    userName = user?.email ?: currentUser.email ?: ""
+                }
+                .addOnFailureListener { e ->
+                    Log.e("FriendsScreen", "Hiba a felhasználó adatainak lekérdezésénél", e)
+                }
+
             db.collection("friendRequests")
                 .whereEqualTo("toUserId", currentUser.uid)
                 .whereEqualTo("status", "pending")
@@ -133,7 +144,6 @@ fun FriendsScreen(navController: NavController) {
                     Log.d("FriendsScreen", "Beérkező kérelmek: ${friendRequests.size}")
                 }
 
-            // Elküldött kérelmek figyelése
             db.collection("friendRequests")
                 .whereEqualTo("fromUserId", currentUser.uid)
                 .whereEqualTo("status", "pending")
@@ -150,7 +160,6 @@ fun FriendsScreen(navController: NavController) {
                     Log.d("FriendsScreen", "Elküldött kérelmek: ${sentFriendRequests.size}")
                 }
 
-            // Barátok listájának figyelése
             db.collection("users")
                 .document(currentUser.uid)
                 .addSnapshotListener { snapshot, e ->
@@ -202,6 +211,32 @@ fun FriendsScreen(navController: NavController) {
                 .fillMaxSize()
                 .padding(16.dp)
         ) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 16.dp),
+                elevation = 4.dp
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Person,
+                        contentDescription = "Felhasználó",
+                        tint = MaterialTheme.colors.primary,
+                        modifier = Modifier.size(32.dp)
+                    )
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Text(
+                        text = userName,
+                        style = MaterialTheme.typography.h6
+                    )
+                }
+            }
+
             if (friendRequests.isNotEmpty()) {
                 ExpandableSection(
                     title = "Barátkérelmek",
@@ -469,11 +504,9 @@ private fun handleFriendRequestResponse(request: FriendRequest, accepted: Boolea
     val currentUser = FirebaseAuth.getInstance().currentUser ?: return
 
     if (accepted) {
-        // Frissítjük a kérelem státuszát
         db.collection("friendRequests").document(request.id)
             .update("status", "accepted")
             .addOnSuccessListener {
-                // Hozzáadjuk egymást a barátokhoz
                 db.collection("users").document(currentUser.uid)
                     .update("friends", FieldValue.arrayUnion(request.fromUserId))
                 
@@ -486,7 +519,6 @@ private fun handleFriendRequestResponse(request: FriendRequest, accepted: Boolea
                 Log.e("FriendsScreen", "Hiba a barátkérelem elfogadásakor", e)
             }
     } else {
-        // Elutasítás esetén csak töröljük a kérelmet
         db.collection("friendRequests").document(request.id)
             .delete()
             .addOnSuccessListener {
