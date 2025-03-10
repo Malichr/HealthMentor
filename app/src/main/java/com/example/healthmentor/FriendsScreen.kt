@@ -431,7 +431,11 @@ fun FriendItem(friend: UserProfile, onRemove: () -> Unit) {
         ) {
             Text(friend.email)
             IconButton(onClick = onRemove) {
-                Icon(Icons.Default.Delete, contentDescription = "Barát törlése")
+                Icon(
+                    Icons.Default.Delete,
+                    contentDescription = "Barát törlése",
+                    tint = MaterialTheme.colors.error
+                )
             }
         }
     }

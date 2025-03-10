@@ -14,5 +14,12 @@ fun Navigation(navController: NavHostController) {
         composable("ai_advice") { AIAdviceScreen(navController) }
         composable("challenges") { GroupChallengesScreen(navController) }
         composable("friends") { FriendsScreen(navController) }
+        composable("group_details/{groupId}") { backStackEntry ->
+            val groupId = backStackEntry.arguments?.getString("groupId")
+            GroupChallengesScreen(
+                navController = navController,
+                initialGroupId = groupId
+            )
+        }
     }
 }

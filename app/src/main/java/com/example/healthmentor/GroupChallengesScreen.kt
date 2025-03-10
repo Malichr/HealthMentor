@@ -26,12 +26,14 @@ import androidx.compose.material.icons.filled.Close
 
 @SuppressLint("UnusedMaterialScaffoldPaddingParameter")
 @Composable
-fun GroupChallengesScreen(navController: NavController) {
+fun GroupChallengesScreen(
+    navController: NavController,
+    initialGroupId: String? = null
+) {
     var groups by remember { mutableStateOf<List<Group>>(emptyList()) }
     var showCreateGroupDialog by remember { mutableStateOf(false) }
     var newGroupName by remember { mutableStateOf("") }
     var groupInvites by remember { mutableStateOf<List<GroupInvite>>(emptyList()) }
-    var selectedGroup by remember { mutableStateOf<Group?>(null) }
     var friends by remember { mutableStateOf<List<UserProfile>>(emptyList()) }
     var selectedGroupMembers by remember { mutableStateOf<List<UserProfile>>(emptyList()) }
     var memberSteps by remember { mutableStateOf<List<Pair<UserProfile, Int>>>(emptyList()) }
@@ -52,10 +54,23 @@ fun GroupChallengesScreen(navController: NavController) {
                         it.toObject(Group::class.java)?.copy(id = it.id) 
                     } ?: emptyList()
                     
-                    selectedGroup?.let { selected ->
-                        val updatedGroup = groups.find { it.id == selected.id }
-                        if (updatedGroup != null && updatedGroup != selected) {
-                            selectedGroup = updatedGroup
+                    selectedGroupMembers = emptyList()
+                    memberSteps = emptyList()
+
+                    groups.forEach { group ->
+                        if (group.members.contains(currentUser.uid)) {
+                            group.members.forEach { memberId ->
+                                db.collection("users")
+                                    .document(memberId)
+                                    .get()
+                                    .addOnSuccessListener { document ->
+                                        val userProfile = document.toObject(UserProfile::class.java)
+                                        if (userProfile != null) {
+                                            selectedGroupMembers = selectedGroupMembers + userProfile
+                                            memberSteps = memberSteps.filter { it.first.userId != memberId } + (userProfile to 0)
+                                        }
+                                    }
+                            }
                         }
                     }
                 }
@@ -103,34 +118,25 @@ fun GroupChallengesScreen(navController: NavController) {
         }
     }
 
-    LaunchedEffect(selectedGroup) {
-        selectedGroup?.let { group ->
-            if (group.members.isNotEmpty()) {
+    LaunchedEffect(groups) {
+        groups.forEach { group ->
+            if (group.members.contains(currentUser?.uid)) {
                 db.collection("users")
                     .whereIn("userId", group.members)
-                    .addSnapshotListener { snapshot, e ->
-                        if (e != null) {
-                            Log.e("GroupChallenges", "Hiba a csoporttagok figyelése közben", e)
-                            return@addSnapshotListener
+                    .get()
+                    .addOnSuccessListener { querySnapshot ->
+                        selectedGroupMembers = querySnapshot.documents.mapNotNull { document ->
+                            document.toObject(UserProfile::class.java)
                         }
-                        selectedGroupMembers = snapshot?.documents?.mapNotNull { 
-                            it.toObject(UserProfile::class.java)
-                        } ?: emptyList()
 
                         val today = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
-                        memberSteps = emptyList()
-
                         group.members.forEach { memberId ->
                             db.collection("stepCounts")
                                 .whereEqualTo("userId", memberId)
                                 .whereEqualTo("date", today)
-                                .addSnapshotListener { stepSnapshot, stepError ->
-                                    if (stepError != null) {
-                                        Log.e("GroupChallenges", "Hiba a lépések figyelése közben", stepError)
-                                        return@addSnapshotListener
-                                    }
-                                    
-                                    val stepCount = stepSnapshot?.documents?.firstOrNull()
+                                .get()
+                                .addOnSuccessListener { stepSnapshot ->
+                                    val stepCount = stepSnapshot.documents.firstOrNull()
                                         ?.toObject(StepCount::class.java)
                                     val steps = stepCount?.steps ?: 0
                                     
@@ -141,121 +147,92 @@ fun GroupChallengesScreen(navController: NavController) {
                                 }
                         }
                     }
-            } else {
-                selectedGroupMembers = emptyList()
-                memberSteps = emptyList()
             }
         }
     }
 
-    Scaffold(
-        bottomBar = {
-            CommonBottomBar(navController = navController, currentRoute = "challenges")
-        },
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = { showCreateGroupDialog = true },
-                backgroundColor = MaterialTheme.colors.primary
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Add,
-                    contentDescription = "Új csoport létrehozása",
-                    tint = MaterialTheme.colors.onPrimary
-                )
-            }
-        }
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp)
-        ) {
-            if (groupInvites.isNotEmpty()) {
-                Text(
-                    text = "Meghívók",
-                    style = MaterialTheme.typography.h6,
-                    color = MaterialTheme.colors.primary,
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
-                GroupInvitesList(groupInvites) { invite, accepted ->
-                    handleGroupInviteResponse(invite, accepted)
-                }
-                Divider(modifier = Modifier.padding(vertical = 16.dp))
-            }
-
-            Text(
-                text = "Csoportjaim",
-                style = MaterialTheme.typography.h6,
-                color = MaterialTheme.colors.primary,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
-
-            if (groups.isEmpty()) {
-                Text(
-                    text = "Még nem vagy tagja egy csoportnak sem.",
-                    style = MaterialTheme.typography.body1,
-                    modifier = Modifier.padding(vertical = 8.dp)
-                )
-            } else {
-                LazyColumn {
-                    items(groups) { group ->
-                        GroupItem(
-                            group = group,
-                            onGroupSelected = { selectedGroup = it }
-                        )
-                    }
-                }
-            }
-        }
-
-        if (showCreateGroupDialog) {
-            CreateGroupDialog(
-                groupName = newGroupName,
-                onGroupNameChange = { newGroupName = it },
-                onDismiss = {
-                    showCreateGroupDialog = false
-                    newGroupName = ""
-                },
-                onCreate = {
-                    createNewGroup(newGroupName)
-                    showCreateGroupDialog = false
-                    newGroupName = ""
-                }
-            )
-        }
-
-        selectedGroup?.let { group ->
-            GroupDetailsDialog(
+    if (initialGroupId != null) {
+        val group = groups.find { it.id == initialGroupId }
+        if (group != null) {
+            GroupDetailsScreen(
+                navController = navController,
                 group = group,
                 friends = friends,
                 currentUserId = currentUser?.uid ?: "",
                 members = selectedGroupMembers,
-                memberSteps = memberSteps,
-                onDismiss = { 
-                    selectedGroup = null
-                    selectedGroupMembers = emptyList()
-                    memberSteps = emptyList()
+                onInvite = { friendId -> 
+                    inviteFriendToGroup(group.id, friendId)
                 },
-                onInvite = { friendId ->
-                    if (currentUser?.uid == group.ownerId) {
-                        inviteFriendToGroup(group.id, friendId)
-                    }
-                },
-                onLeave = {
-                    currentUser?.uid?.let { userId ->
-                        leaveGroup(group.id, userId)
-                        selectedGroup = null
-                        selectedGroupMembers = emptyList()
-                    }
+                onLeave = { 
+                    leaveGroup(group.id, currentUser?.uid ?: "")
+                    navController.navigateUp()
                 },
                 onDelete = {
-                    if (currentUser?.uid == group.ownerId) {
-                        deleteGroup(group.id)
-                        selectedGroup = null
-                        selectedGroupMembers = emptyList()
-                    }
+                    deleteGroup(group.id)
+                    navController.navigateUp()
+                },
+                onRemoveMember = { memberId ->
+                    removeMemberFromGroup(group.id, memberId)
                 }
             )
+        }
+    } else {
+        Scaffold(
+            bottomBar = {
+                CommonBottomBar(navController = navController, currentRoute = "challenges")
+            },
+            floatingActionButton = {
+                FloatingActionButton(
+                    onClick = { showCreateGroupDialog = true },
+                    backgroundColor = MaterialTheme.colors.primary
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = "Új csoport létrehozása",
+                        tint = MaterialTheme.colors.onPrimary
+                    )
+                }
+            }
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp)
+            ) {
+                if (groupInvites.isNotEmpty()) {
+                    GroupInvitesList(groupInvites) { invite, accepted ->
+                        handleGroupInviteResponse(invite, accepted)
+                    }
+                    Divider(modifier = Modifier.padding(vertical = 16.dp))
+                }
+
+                LazyColumn {
+                    items(groups) { group ->
+                        GroupCard(
+                            group = group,
+                            onClick = {
+                                navController.navigate("group_details/${group.id}")
+                            }
+                        )
+                    }
+                }
+            }
+
+            if (showCreateGroupDialog) {
+                CreateGroupDialog(
+                    groupName = newGroupName,
+                    onGroupNameChange = { newGroupName = it },
+                    onDismiss = {
+                        showCreateGroupDialog = false
+                        newGroupName = ""
+                    },
+                    onCreate = {
+                        createNewGroup(newGroupName)
+                        showCreateGroupDialog = false
+                        newGroupName = ""
+                    }
+                )
+            }
         }
     }
 }
@@ -655,5 +632,19 @@ private fun leaveGroup(groupId: String, userId: String) {
         }
         .addOnFailureListener { e ->
             Log.e("GroupChallenges", "Hiba a csoportból való kilépés közben", e)
+        }
+}
+
+private fun removeMemberFromGroup(groupId: String, memberId: String) {
+    val db = FirebaseFirestore.getInstance()
+    
+    db.collection("groups")
+        .document(groupId)
+        .update("members", FieldValue.arrayRemove(memberId))
+        .addOnSuccessListener {
+            Log.d("GroupChallenges", "Tag sikeresen eltávolítva: $memberId")
+        }
+        .addOnFailureListener { e ->
+            Log.e("GroupChallenges", "Hiba a tag eltávolítása közben", e)
         }
 }

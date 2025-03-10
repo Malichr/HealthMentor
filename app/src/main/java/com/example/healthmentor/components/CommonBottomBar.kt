@@ -114,13 +114,13 @@ fun CommonBottomBar(navController: NavController, currentRoute: String) {
                     if (pendingGroupInvites > 0) {
                         Badge(
                             modifier = Modifier
-                                .size(12.dp)
+                                .size(14.dp)
                                 .clip(CircleShape)
                                 .align(Alignment.TopEnd)
                         ) {
                             Text(
                                 text = pendingGroupInvites.toString(),
-                                fontSize = 8.sp,
+                                fontSize = 10.sp,
                                 modifier = Modifier.padding(0.dp)
                             )
                         }
@@ -154,13 +154,13 @@ fun CommonBottomBar(navController: NavController, currentRoute: String) {
                     if (pendingFriendRequests > 0) {
                         Badge(
                             modifier = Modifier
-                                .size(12.dp)
+                                .size(14.dp)
                                 .clip(CircleShape)
                                 .align(Alignment.TopEnd)
                         ) {
                             Text(
                                 text = pendingFriendRequests.toString(),
-                                fontSize = 8.sp,
+                                fontSize = 10.sp,
                                 modifier = Modifier.padding(0.dp)
                             )
                         }
