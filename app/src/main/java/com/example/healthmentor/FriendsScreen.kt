@@ -95,9 +95,6 @@ fun ExpandableSection(
         AnimatedVisibility(visible = expanded) {
             content()
         }
-        if (expanded) {
-            Divider(modifier = Modifier.padding(top = 8.dp))
-        }
     }
 }
 
