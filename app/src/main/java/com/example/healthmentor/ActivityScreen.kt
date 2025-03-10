@@ -150,7 +150,7 @@ fun ActivityScreen(navController: NavController) {
                     title = "Átlag távolság",
                     value = String.format("%.1f", 
                         if (fitnessData.activeDays > 0) 
-                            fitnessData.totalDistance / fitnessData.activeDays / 1000 
+                            fitnessData.totalDistance / fitnessData.activeDays 
                         else 0f),
                     unit = "km/nap"
                 )
