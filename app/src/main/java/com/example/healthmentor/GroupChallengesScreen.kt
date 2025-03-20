@@ -199,6 +199,13 @@ fun GroupChallengesScreen(
                     .fillMaxSize()
                     .padding(16.dp)
             ) {
+                Text(
+                    text = "Csoportok",
+                    style = MaterialTheme.typography.h6,
+                    color = MaterialTheme.colors.primary,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+
                 if (groupInvites.isNotEmpty()) {
                     GroupInvitesList(groupInvites) { invite, accepted ->
                         handleGroupInviteResponse(invite, accepted)
