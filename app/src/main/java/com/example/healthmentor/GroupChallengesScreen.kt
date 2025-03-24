@@ -200,27 +200,36 @@ fun GroupChallengesScreen(
                     .padding(16.dp)
             ) {
                 Text(
-                    text = "Csoportok",
+                    text = "Kihívások",
                     style = MaterialTheme.typography.h6,
                     color = MaterialTheme.colors.primary,
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
 
                 if (groupInvites.isNotEmpty()) {
-                    GroupInvitesList(groupInvites) { invite, accepted ->
-                        handleGroupInviteResponse(invite, accepted)
+                    ExpandableSection(
+                        title = "Meghívók",
+                        badge = groupInvites.size
+                    ) {
+                        GroupInvitesList(groupInvites) { invite, accepted ->
+                            handleGroupInviteResponse(invite, accepted)
+                        }
                     }
-                    Divider(modifier = Modifier.padding(vertical = 16.dp))
                 }
 
-                LazyColumn {
-                    items(groups) { group ->
-                        GroupCard(
-                            group = group,
-                            onClick = {
-                                navController.navigate("group_details/${group.id}")
-                            }
-                        )
+                ExpandableSection(
+                    title = "Csoportok",
+                    badge = groups.size
+                ) {
+                    LazyColumn {
+                        items(groups) { group ->
+                            GroupCard(
+                                group = group,
+                                onClick = {
+                                    navController.navigate("group_details/${group.id}")
+                                }
+                            )
+                        }
                     }
                 }
             }
@@ -563,32 +572,36 @@ fun GroupInvitesList(
                         text = invite.groupName,
                         style = MaterialTheme.typography.h6
                     )
-                    Text(
-                        text = "Meghívó: ${invite.fromUserEmail}",
-                        style = MaterialTheme.typography.body1,
-                        modifier = Modifier.padding(vertical = 4.dp)
-                    )
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.End
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        IconButton(
-                            onClick = { onResponse(invite, true) }
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Check,
-                                contentDescription = "Elfogadás",
-                                tint = androidx.compose.ui.graphics.Color.Green
-                            )
-                        }
-                        IconButton(
-                            onClick = { onResponse(invite, false) }
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Close,
-                                contentDescription = "Elutasítás",
-                                tint = MaterialTheme.colors.error
-                            )
+                        Text(
+                            text = "Meghívó: ${invite.fromUserEmail}",
+                            style = MaterialTheme.typography.body1
+                        )
+                        Row {
+                            IconButton(
+                                onClick = { onResponse(invite, true) }
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Check,
+                                    contentDescription = "Elfogadás",
+                                    tint = androidx.compose.ui.graphics.Color.Green
+                                )
+                            }
+                            IconButton(
+                                onClick = { onResponse(invite, false) }
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "Elutasítás",
+                                    tint = MaterialTheme.colors.error
+                                )
+                            }
                         }
                     }
                 }
