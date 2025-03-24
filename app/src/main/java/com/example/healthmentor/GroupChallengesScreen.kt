@@ -173,6 +173,10 @@ fun GroupChallengesScreen(
                 },
                 onRemoveMember = { memberId ->
                     removeMemberFromGroup(group.id, memberId)
+                },
+                onCancelInvite = { friendId ->
+                    db.collection("groups").document(group.id)
+                        .update("pendingInvites", FieldValue.arrayRemove(friendId))
                 }
             )
         }

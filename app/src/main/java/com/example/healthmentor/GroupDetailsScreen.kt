@@ -7,7 +7,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.runtime.*
@@ -32,8 +34,10 @@ fun GroupDetailsScreen(
     onInvite: (String) -> Unit,
     onLeave: () -> Unit,
     onDelete: () -> Unit,
-    onRemoveMember: (String) -> Unit
+    onRemoveMember: (String) -> Unit,
+    onCancelInvite: (String) -> Unit
 ) {
+    var showInviteFriendsDialog by remember { mutableStateOf(false) }
     val scrollState = rememberScrollState()
 
     Scaffold(
@@ -110,6 +114,53 @@ fun GroupDetailsScreen(
                 }
             }
 
+            if (group.pendingInvites.isNotEmpty() && currentUserId == group.ownerId) {
+                Spacer(modifier = Modifier.height(16.dp))
+                ExpandableSection(
+                    title = "Függőben lévő meghívások",
+                    badge = group.pendingInvites.size
+                ) {
+                    friends.filter { friend ->
+                        group.pendingInvites.contains(friend.userId)
+                    }.forEach { friend ->
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp),
+                            elevation = 2.dp
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .padding(16.dp)
+                                    .fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column {
+                                    Text(
+                                        text = friend.username,
+                                        style = MaterialTheme.typography.subtitle1
+                                    )
+                                    Text(
+                                        text = friend.email,
+                                        style = MaterialTheme.typography.caption
+                                    )
+                                }
+                                IconButton(
+                                    onClick = { onCancelInvite(friend.userId) }
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Close,
+                                        contentDescription = "Meghívás visszavonása",
+                                        tint = MaterialTheme.colors.error
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
             if (currentUserId == group.ownerId) {
                 val invitableFriends = friends.filter { friend ->
                     !group.members.contains(friend.userId) && 
@@ -117,6 +168,7 @@ fun GroupDetailsScreen(
                 }
                 
                 if (invitableFriends.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(16.dp))
                     ExpandableSection(
                         title = "Barát meghívása",
                         badge = invitableFriends.size
@@ -187,5 +239,18 @@ fun GroupDetailsScreen(
 
             Spacer(modifier = Modifier.height(80.dp))
         }
+    }
+
+    if (showInviteFriendsDialog) {
+        InviteFriendsDialog(
+            friends = friends,
+            members = members,
+            pendingInvites = group.pendingInvites,
+            onInvite = { friendId ->
+                onInvite(friendId)
+                showInviteFriendsDialog = false
+            },
+            onDismiss = { showInviteFriendsDialog = false }
+        )
     }
 } 
