@@ -18,85 +18,8 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.example.healthmentor.components.CommonBottomBar
+import com.example.healthmentor.components.ExpandableSection
 import android.util.Log
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.foundation.clickable
-import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.unit.sp
-import androidx.compose.foundation.background
-
-@Composable
-fun ExpandableSection(
-    title: String,
-    badge: Int? = null,
-    content: @Composable () -> Unit
-) {
-    var expanded by remember { mutableStateOf(true) }
-    val rotationState by animateFloatAsState(
-        targetValue = if (expanded) 180f else 0f
-    )
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 8.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable { expanded = !expanded }
-                .padding(vertical = 8.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.h6,
-                    color = MaterialTheme.colors.primary
-                )
-                badge?.let {
-                    if (it > 0) {
-                        Surface(
-                            modifier = Modifier
-                                .size(24.dp)
-                                .clip(CircleShape),
-                            color = MaterialTheme.colors.primary,
-                            shape = CircleShape
-                        ) {
-                            Box(
-                                contentAlignment = Alignment.Center,
-                                modifier = Modifier.fillMaxSize()
-                            ) {
-                                Text(
-                                    text = it.toString(),
-                                    color = MaterialTheme.colors.onPrimary,
-                                    fontSize = 12.sp,
-                                    modifier = Modifier.padding(2.dp)
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-            Icon(
-                imageVector = Icons.Default.KeyboardArrowDown,
-                contentDescription = if (expanded) "Összecsukás" else "Kinyitás",
-                modifier = Modifier.rotate(rotationState)
-            )
-        }
-        AnimatedVisibility(visible = expanded) {
-            content()
-        }
-    }
-}
 
 @SuppressLint("UnusedMaterialScaffoldPaddingParameter")
 @Composable

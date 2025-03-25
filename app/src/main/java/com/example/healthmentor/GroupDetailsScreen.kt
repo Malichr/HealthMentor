@@ -1,13 +1,11 @@
 package com.example.healthmentor
 
 import android.annotation.SuppressLint
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
@@ -15,11 +13,11 @@ import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.healthmentor.components.CommonBottomBar
+import com.example.healthmentor.components.ExpandableSection
+import com.example.healthmentor.components.InviteFriendsDialog
 import com.example.healthmentor.models.Group
 import com.example.healthmentor.models.UserProfile
 
@@ -31,6 +29,7 @@ fun GroupDetailsScreen(
     friends: List<UserProfile>,
     currentUserId: String,
     members: List<UserProfile>,
+    pendingInviteFriends: List<UserProfile>,
     onInvite: (String) -> Unit,
     onLeave: () -> Unit,
     onDelete: () -> Unit,
@@ -65,52 +64,62 @@ fun GroupDetailsScreen(
                 title = "Tagok",
                 badge = members.size
             ) {
-                members.forEach { member ->
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp),
-                        elevation = 2.dp
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .padding(16.dp)
-                                .fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column {
-                                Text(
-                                    text = member.username,
-                                    style = MaterialTheme.typography.subtitle1
-                                )
-                                Text(
-                                    text = member.email,
-                                    style = MaterialTheme.typography.caption
-                                )
-                                if (member.userId == group.ownerId) {
-                                    Text(
-                                        text = "(Admin)",
-                                        style = MaterialTheme.typography.caption,
-                                        color = MaterialTheme.colors.primary,
-                                        modifier = Modifier.padding(top = 2.dp)
-                                    )
-                                }
-                            }
-                            
-                            if (currentUserId == group.ownerId && member.userId != currentUserId) {
-                                IconButton(
-                                    onClick = { onRemoveMember(member.userId) }
+                if (members.isNotEmpty()) {
+                    Column {
+                        members.forEach { member ->
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 4.dp),
+                                elevation = 2.dp
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .padding(16.dp)
+                                        .fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Delete,
-                                        contentDescription = "Tag törlése",
-                                        tint = MaterialTheme.colors.error
-                                    )
+                                    Column {
+                                        Text(
+                                            text = member.username,
+                                            style = MaterialTheme.typography.subtitle1
+                                        )
+                                        Text(
+                                            text = member.email,
+                                            style = MaterialTheme.typography.caption
+                                        )
+                                        if (member.userId == group.ownerId) {
+                                            Text(
+                                                text = "(Admin)",
+                                                style = MaterialTheme.typography.caption,
+                                                color = MaterialTheme.colors.primary,
+                                                modifier = Modifier.padding(top = 2.dp)
+                                            )
+                                        }
+                                    }
+                                    
+                                    if (currentUserId == group.ownerId && member.userId != currentUserId) {
+                                        IconButton(
+                                            onClick = { onRemoveMember(member.userId) }
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.Delete,
+                                                contentDescription = "Tag törlése",
+                                                tint = MaterialTheme.colors.error
+                                            )
+                                        }
+                                    }
                                 }
                             }
                         }
                     }
+                } else {
+                    Text(
+                        text = "Nincsenek tagok a csoportban",
+                        style = MaterialTheme.typography.body1,
+                        modifier = Modifier.padding(vertical = 8.dp)
+                    )
                 }
             }
 
@@ -120,43 +129,51 @@ fun GroupDetailsScreen(
                     title = "Függőben lévő meghívások",
                     badge = group.pendingInvites.size
                 ) {
-                    friends.filter { friend ->
-                        group.pendingInvites.contains(friend.userId)
-                    }.forEach { friend ->
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 4.dp),
-                            elevation = 2.dp
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .padding(16.dp)
-                                    .fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Column {
-                                    Text(
-                                        text = friend.username,
-                                        style = MaterialTheme.typography.subtitle1
-                                    )
-                                    Text(
-                                        text = friend.email,
-                                        style = MaterialTheme.typography.caption
-                                    )
-                                }
-                                IconButton(
-                                    onClick = { onCancelInvite(friend.userId) }
+                    if (pendingInviteFriends.isNotEmpty()) {
+                        Column {
+                            pendingInviteFriends.forEach { friend ->
+                                Card(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 4.dp),
+                                    elevation = 2.dp
                                 ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Close,
-                                        contentDescription = "Meghívás visszavonása",
-                                        tint = MaterialTheme.colors.error
-                                    )
+                                    Row(
+                                        modifier = Modifier
+                                            .padding(16.dp)
+                                            .fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Column {
+                                            Text(
+                                                text = friend.username,
+                                                style = MaterialTheme.typography.subtitle1
+                                            )
+                                            Text(
+                                                text = friend.email,
+                                                style = MaterialTheme.typography.caption
+                                            )
+                                        }
+                                        IconButton(
+                                            onClick = { onCancelInvite(friend.userId) }
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.Close,
+                                                contentDescription = "Meghívás visszavonása",
+                                                tint = MaterialTheme.colors.error
+                                            )
+                                        }
+                                    }
                                 }
                             }
                         }
+                    } else {
+                        Text(
+                            text = "Nincsenek megjeleníthető meghívások",
+                            style = MaterialTheme.typography.body1,
+                            modifier = Modifier.padding(vertical = 8.dp)
+                        )
                     }
                 }
             }
@@ -173,41 +190,51 @@ fun GroupDetailsScreen(
                         title = "Barát meghívása",
                         badge = invitableFriends.size
                     ) {
-                        invitableFriends.forEach { friend ->
-                            Card(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 4.dp),
-                                elevation = 2.dp
-                            ) {
-                                Row(
-                                    modifier = Modifier
-                                        .padding(16.dp)
-                                        .fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Column {
-                                        Text(
-                                            text = friend.username,
-                                            style = MaterialTheme.typography.subtitle1
-                                        )
-                                        Text(
-                                            text = friend.email,
-                                            style = MaterialTheme.typography.caption
-                                        )
-                                    }
-                                    IconButton(
-                                        onClick = { onInvite(friend.userId) }
+                        if (invitableFriends.isNotEmpty()) {
+                            Column {
+                                invitableFriends.forEach { friend ->
+                                    Card(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(vertical = 4.dp),
+                                        elevation = 2.dp
                                     ) {
-                                        Icon(
-                                            imageVector = Icons.Default.PersonAdd,
-                                            contentDescription = "Barát meghívása",
-                                            tint = MaterialTheme.colors.primary
-                                        )
+                                        Row(
+                                            modifier = Modifier
+                                                .padding(16.dp)
+                                                .fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Column {
+                                                Text(
+                                                    text = friend.username,
+                                                    style = MaterialTheme.typography.subtitle1
+                                                )
+                                                Text(
+                                                    text = friend.email,
+                                                    style = MaterialTheme.typography.caption
+                                                )
+                                            }
+                                            IconButton(
+                                                onClick = { onInvite(friend.userId) }
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Default.PersonAdd,
+                                                    contentDescription = "Barát meghívása",
+                                                    tint = MaterialTheme.colors.primary
+                                                )
+                                            }
+                                        }
                                     }
                                 }
                             }
+                        } else {
+                            Text(
+                                text = "Nincs meghívható barát",
+                                style = MaterialTheme.typography.body1,
+                                modifier = Modifier.padding(vertical = 8.dp)
+                            )
                         }
                     }
                 }

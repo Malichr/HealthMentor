@@ -154,12 +154,50 @@ fun GroupChallengesScreen(
     if (initialGroupId != null) {
         val group = groups.find { it.id == initialGroupId }
         if (group != null) {
+            var groupMembers by remember { mutableStateOf<List<UserProfile>>(emptyList()) }
+            var pendingInviteFriends by remember { mutableStateOf<List<UserProfile>>(emptyList()) }
+            
+            LaunchedEffect(group) {
+                if (group.members.isNotEmpty()) {
+                    db.collection("users")
+                        .whereIn("userId", group.members)
+                        .get()
+                        .addOnSuccessListener { querySnapshot ->
+                            groupMembers = querySnapshot.documents.mapNotNull { document ->
+                                document.toObject(UserProfile::class.java)
+                            }
+                            Log.d("GroupChallenges", "Csoport tagok száma: ${groupMembers.size}")
+                            Log.d("GroupChallenges", "Csoport tagok: ${groupMembers.map { it.username }}")
+                        }
+                        .addOnFailureListener { e ->
+                            Log.e("GroupChallenges", "Hiba a csoport tagok lekérdezésekor", e)
+                        }
+                }
+                
+                if (group.pendingInvites.isNotEmpty()) {
+                    db.collection("users")
+                        .whereIn("userId", group.pendingInvites)
+                        .get()
+                        .addOnSuccessListener { querySnapshot ->
+                            pendingInviteFriends = querySnapshot.documents.mapNotNull { document ->
+                                document.toObject(UserProfile::class.java)
+                            }
+                            Log.d("GroupChallenges", "Függőben lévő meghívások száma: ${pendingInviteFriends.size}")
+                            Log.d("GroupChallenges", "Meghívott barátok: ${pendingInviteFriends.map { it.username }}")
+                        }
+                        .addOnFailureListener { e ->
+                            Log.e("GroupChallenges", "Hiba a függőben lévő meghívások lekérdezésekor", e)
+                        }
+                }
+            }
+            
             GroupDetailsScreen(
                 navController = navController,
                 group = group,
                 friends = friends,
                 currentUserId = currentUser?.uid ?: "",
-                members = selectedGroupMembers,
+                members = groupMembers,
+                pendingInviteFriends = pendingInviteFriends,
                 onInvite = { friendId -> 
                     inviteFriendToGroup(group.id, friendId)
                 },
@@ -177,6 +215,12 @@ fun GroupChallengesScreen(
                 onCancelInvite = { friendId ->
                     db.collection("groups").document(group.id)
                         .update("pendingInvites", FieldValue.arrayRemove(friendId))
+                        .addOnSuccessListener {
+                            Log.d("GroupChallenges", "Meghívás sikeresen visszavonva")
+                        }
+                        .addOnFailureListener { e ->
+                            Log.e("GroupChallenges", "Hiba a meghívás visszavonása közben", e)
+                        }
                 }
             )
         }
@@ -506,54 +550,6 @@ fun GroupDetailsDialog(
             onDismiss = { showInviteFriendsDialog = false }
         )
     }
-}
-
-@Composable
-fun InviteFriendsDialog(
-    friends: List<UserProfile>,
-    members: List<UserProfile>,
-    pendingInvites: List<String>,
-    onInvite: (String) -> Unit,
-    onDismiss: () -> Unit
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Barátok meghívása") },
-        text = {
-            LazyColumn {
-                items(
-                    friends.filter { friend ->
-                        !members.any { it.userId == friend.userId } &&
-                        !pendingInvites.contains(friend.userId)
-                    }
-                ) { friend ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(friend.email)
-                        IconButton(
-                            onClick = { onInvite(friend.userId) }
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Add,
-                                contentDescription = "Meghívás",
-                                tint = MaterialTheme.colors.primary
-                            )
-                        }
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Bezárás")
-            }
-        }
-    )
 }
 
 @Composable
