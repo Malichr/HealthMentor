@@ -21,5 +21,14 @@ fun Navigation(navController: NavHostController) {
                 initialGroupId = groupId
             )
         }
+        composable("group_member_details/{memberId}/{memberName}") { backStackEntry ->
+            val memberId = backStackEntry.arguments?.getString("memberId") ?: ""
+            val memberName = backStackEntry.arguments?.getString("memberName") ?: ""
+            GroupMemberDetailsScreen(
+                navController = navController,
+                memberId = memberId,
+                memberName = memberName
+            )
+        }
     }
 }

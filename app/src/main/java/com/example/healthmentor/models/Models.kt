@@ -1,5 +1,7 @@
 package com.example.healthmentor.models
 
+import com.google.firebase.Timestamp
+
 data class User(
     val id: String,
     val email: String,

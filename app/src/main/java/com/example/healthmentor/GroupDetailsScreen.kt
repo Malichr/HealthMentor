@@ -1,6 +1,7 @@
 package com.example.healthmentor
 
 import android.annotation.SuppressLint
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -70,7 +71,10 @@ fun GroupDetailsScreen(
                             Card(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(vertical = 4.dp),
+                                    .padding(vertical = 4.dp)
+                                    .clickable {
+                                        navController.navigate("group_member_details/${member.userId}/${member.username}")
+                                    },
                                 elevation = 2.dp
                             ) {
                                 Row(

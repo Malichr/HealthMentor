@@ -5,7 +5,9 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.os.Build
 import android.util.Log
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -27,12 +29,22 @@ import com.google.android.gms.auth.api.signin.GoogleSignInAccount
 import com.google.android.gms.fitness.FitnessOptions
 import com.google.android.gms.fitness.data.DataType
 import com.example.healthmentor.components.CommonBottomBar
+import com.example.healthmentor.components.DashboardHeader
+import com.example.healthmentor.components.DashboardSection
+import com.example.healthmentor.components.MetricCard
 import java.text.SimpleDateFormat
 import java.util.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import com.example.healthmentor.models.CaloriesData
+import com.example.healthmentor.models.DistanceData
+import com.example.healthmentor.models.MemberStepCount
 import java.util.concurrent.TimeUnit
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.Timestamp
 
+@RequiresApi(Build.VERSION_CODES.O)
 @SuppressLint("UnusedMaterialScaffoldPaddingParameter")
 @Composable
 fun ActivityScreen(navController: NavController) {
@@ -66,6 +78,8 @@ fun ActivityScreen(navController: NavController) {
                         totalEndTime = intent.getLongExtra("totalEndTime", 0L)
                     )
                     Log.d("ActivityScreen", "Updated fitness data: $fitnessData")
+                    
+                    saveFitnessDataToFirebase(fitnessData)
                 }
             }
         }
@@ -203,25 +217,6 @@ fun ActivityScreen(navController: NavController) {
 }
 
 @Composable
-fun DashboardHeader(title: String) {
-    Column(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.h4,
-            color = MaterialTheme.colors.primary
-        )
-        Text(
-            text = SimpleDateFormat("yyyy.MM.dd", Locale.getDefault()).format(Date()),
-            style = MaterialTheme.typography.subtitle1,
-            color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
-        )
-    }
-}
-
-@Composable
 private fun StatisticsHeader(fitnessData: FitnessDataState) {
     Column(
         modifier = Modifier.fillMaxWidth(),
@@ -240,67 +235,6 @@ private fun StatisticsHeader(fitnessData: FitnessDataState) {
                 text = "${dateFormat.format(startDate)} - ${dateFormat.format(endDate)}",
                 style = MaterialTheme.typography.subtitle1,
                 color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
-            )
-        }
-    }
-}
-
-@Composable
-fun DashboardSection(
-    title: String,
-    content: @Composable () -> Unit
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 8.dp),
-        elevation = 4.dp,
-        backgroundColor = MaterialTheme.colors.surface
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.h6,
-                color = MaterialTheme.colors.primary,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
-            content()
-        }
-    }
-}
-
-@Composable
-fun MetricCard(
-    title: String,
-    value: String,
-    unit: String
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.body1
-        )
-        Row(
-            verticalAlignment = Alignment.Bottom
-        ) {
-            Text(
-                text = value,
-                style = MaterialTheme.typography.h6,
-                color = MaterialTheme.colors.primary
-            )
-            Spacer(modifier = Modifier.width(4.dp))
-            Text(
-                text = unit,
-                style = MaterialTheme.typography.caption,
-                modifier = Modifier.padding(bottom = 4.dp)
             )
         }
     }
@@ -341,4 +275,61 @@ public fun requestFitnessData(context: Context, account: GoogleSignInAccount) {
         .build()
 
     FitnessDataService.enqueueWork(context, account)
+}
+
+private fun saveFitnessDataToFirebase(fitnessData: FitnessDataState) {
+    val currentUser = FirebaseAuth.getInstance().currentUser ?: return
+    val db = FirebaseFirestore.getInstance()
+
+    val stepCount = MemberStepCount(
+        userId = currentUser.uid,
+        date = Timestamp.now(),
+        count = fitnessData.dailySteps
+    )
+    
+    db.collection("users")
+        .document(currentUser.uid)
+        .collection("steps")
+        .add(stepCount)
+        .addOnSuccessListener {
+            Log.d("ActivityScreen", "Lépésszám sikeresen mentve")
+        }
+        .addOnFailureListener { e ->
+            Log.e("ActivityScreen", "Hiba a lépésszám mentésekor", e)
+        }
+
+    val caloriesData = CaloriesData(
+        userId = currentUser.uid,
+        date = Timestamp.now(),
+        calories = fitnessData.dailyCalories
+    )
+    
+    db.collection("users")
+        .document(currentUser.uid)
+        .collection("calories")
+        .add(caloriesData)
+        .addOnSuccessListener {
+            Log.d("ActivityScreen", "Kalória adatok sikeresen mentve")
+        }
+        .addOnFailureListener { e ->
+            Log.e("ActivityScreen", "Hiba a kalória adatok mentésekor", e)
+        }
+
+
+    val distanceData = DistanceData(
+        userId = currentUser.uid,
+        date = Timestamp.now(),
+        distance = fitnessData.dailyDistance.toDouble()
+    )
+    
+    db.collection("users")
+        .document(currentUser.uid)
+        .collection("distance")
+        .add(distanceData)
+        .addOnSuccessListener {
+            Log.d("ActivityScreen", "Távolság adatok sikeresen mentve")
+        }
+        .addOnFailureListener { e ->
+            Log.e("ActivityScreen", "Hiba a távolság adatok mentésekor", e)
+        }
 }
