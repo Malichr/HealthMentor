@@ -7,8 +7,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.example.healthmentor.models.SleepData
 import com.example.healthmentor.models.MemberStepCount
+import com.example.healthmentor.models.SleepData
 import com.patrykandpatrick.vico.compose.axis.horizontal.bottomAxis
 import com.patrykandpatrick.vico.compose.axis.vertical.startAxis
 import com.patrykandpatrick.vico.compose.chart.Chart
@@ -21,6 +21,16 @@ import com.patrykandpatrick.vico.core.entry.entryOf
 import java.text.SimpleDateFormat
 import java.util.*
 
+private fun Date.truncateToDay(): Date {
+    val calendar = Calendar.getInstance()
+    calendar.time = this
+    calendar.set(Calendar.HOUR_OF_DAY, 0)
+    calendar.set(Calendar.MINUTE, 0)
+    calendar.set(Calendar.SECOND, 0)
+    calendar.set(Calendar.MILLISECOND, 0)
+    return calendar.time
+}
+
 @Composable
 fun StepsChart(steps: List<MemberStepCount>) {
     if (steps.isEmpty()) {
@@ -32,10 +42,17 @@ fun StepsChart(steps: List<MemberStepCount>) {
         return
     }
 
-    val sortedSteps = steps.sortedBy { it.date.toDate().time }
+    val groupedByDay = steps
+        .groupBy { it.date.toDate().truncateToDay() }
+        .mapValues { (_, daySteps) ->
+            daySteps.maxByOrNull { it.date.toDate().time }!! 
+        }
+        .values.toList()
+        .sortedBy { it.date.toDate().time }
+
     val dateFormat = SimpleDateFormat("MM.dd", Locale.getDefault())
 
-    val entries = sortedSteps.mapIndexed { index, stepData ->
+    val entries = groupedByDay.mapIndexed { index, stepData ->
         entryOf(index.toFloat(), stepData.count.toFloat())
     }
     val entryModel = entryModelOf(entries)
@@ -43,8 +60,8 @@ fun StepsChart(steps: List<MemberStepCount>) {
     val axisValueFormatter = remember {
         AxisValueFormatter<AxisPosition.Horizontal.Bottom> { value, _ ->
             val index = value.toInt()
-            if (index >= 0 && index < sortedSteps.size) {
-                dateFormat.format(sortedSteps[index].date.toDate())
+            if (index >= 0 && index < groupedByDay.size) {
+                dateFormat.format(groupedByDay[index].date.toDate())
             } else ""
         }
     }
@@ -61,7 +78,8 @@ fun StepsChart(steps: List<MemberStepCount>) {
             chart = lineChart(
                 lines = listOf(
                     lineSpec(
-                        lineColor = primaryColor
+                        lineColor = primaryColor,
+                        lineThickness = 2.dp
                     )
                 )
             ),
@@ -84,10 +102,17 @@ fun SleepChart(sleepData: List<SleepData>) {
         return
     }
 
-    val sortedSleepData = sleepData.sortedBy { it.date.toDate().time }
+    val groupedByDay = sleepData
+        .groupBy { it.date.toDate().truncateToDay() }
+        .mapValues { (_, daySleep) ->
+            daySleep.maxByOrNull { it.date.toDate().time }!! 
+        }
+        .values.toList()
+        .sortedBy { it.date.toDate().time }
+
     val dateFormat = SimpleDateFormat("MM.dd", Locale.getDefault())
 
-    val entries = sortedSleepData.mapIndexed { index, sleep ->
+    val entries = groupedByDay.mapIndexed { index, sleep ->
         entryOf(index.toFloat(), sleep.durationMinutes.toFloat() / 60f)
     }
     val entryModel = entryModelOf(entries)
@@ -95,8 +120,8 @@ fun SleepChart(sleepData: List<SleepData>) {
     val axisValueFormatter = remember {
         AxisValueFormatter<AxisPosition.Horizontal.Bottom> { value, _ ->
             val index = value.toInt()
-            if (index >= 0 && index < sortedSleepData.size) {
-                dateFormat.format(sortedSleepData[index].date.toDate())
+            if (index >= 0 && index < groupedByDay.size) {
+                dateFormat.format(groupedByDay[index].date.toDate())
             } else ""
         }
     }
@@ -119,7 +144,8 @@ fun SleepChart(sleepData: List<SleepData>) {
             chart = lineChart(
                 lines = listOf(
                     lineSpec(
-                        lineColor = purpleColor
+                        lineColor = purpleColor,
+                        lineThickness = 2.dp
                     )
                 )
             ),
