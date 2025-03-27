@@ -75,4 +75,7 @@ dependencies {
     implementation("com.google.firebase:firebase-auth-ktx")
     implementation("com.google.firebase:firebase-firestore-ktx")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
+    implementation("com.patrykandpatrick.vico:core:1.10.0")
+    implementation("com.patrykandpatrick.vico:compose:1.10.0")
+    implementation("com.patrykandpatrick.vico:compose-m3:1.10.0")
 }
