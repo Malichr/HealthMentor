@@ -30,5 +30,12 @@ fun Navigation(navController: NavHostController) {
                 memberName = memberName
             )
         }
+        composable("group_statistics/{groupId}") { backStackEntry ->
+            val groupId = backStackEntry.arguments?.getString("groupId") ?: ""
+            GroupStatisticsScreen(
+                navController = navController,
+                groupId = groupId
+            )
+        }
     }
 }

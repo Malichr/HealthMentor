@@ -8,6 +8,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.PersonAdd
@@ -22,7 +23,7 @@ import com.example.healthmentor.components.InviteFriendsDialog
 import com.example.healthmentor.models.Group
 import com.example.healthmentor.models.UserProfile
 
-@SuppressLint("UnusedMaterialScaffoldPaddingParameter")
+@SuppressLint("UnusedMaterialScaffoldPaddingParameter", "UnusedBoxWithConstraintsScope")
 @Composable
 fun GroupDetailsScreen(
     navController: NavController,
@@ -53,7 +54,44 @@ fun GroupDetailsScreen(
         },
         bottomBar = {
             CommonBottomBar(navController = navController, currentRoute = "challenges")
-        }
+        },
+        floatingActionButton = {
+            Box(modifier = Modifier.fillMaxWidth()) {
+                if (currentUserId == group.ownerId) {
+                    FloatingActionButton(
+                        onClick = {
+                            onDelete()
+                            navController.navigateUp()
+                        },
+                        backgroundColor = MaterialTheme.colors.error,
+                        modifier = Modifier
+                            .align(Alignment.BottomStart)
+                            .padding(start = 32.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = "Csoport törlése",
+                            tint = MaterialTheme.colors.onError
+                        )
+                    }
+                }
+
+                FloatingActionButton(
+                    onClick = {
+                        navController.navigate("group_statistics/${group.id}")
+                    },
+                    backgroundColor = MaterialTheme.colors.primary,
+                    modifier = Modifier.align(Alignment.BottomEnd)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.BarChart,
+                        contentDescription = "Csoport statisztikák",
+                        tint = MaterialTheme.colors.onPrimary
+                    )
+                }
+            }
+        },
+        floatingActionButtonPosition = FabPosition.End
     ) {
         Column(
             modifier = Modifier
@@ -244,18 +282,9 @@ fun GroupDetailsScreen(
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
+            }
 
-                Button(
-                    onClick = {
-                        onDelete()
-                        navController.navigateUp()
-                    },
-                    colors = ButtonDefaults.buttonColors(backgroundColor = MaterialTheme.colors.error),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Csoport törlése", color = MaterialTheme.colors.onError)
-                }
-            } else {
+            if (currentUserId != group.ownerId) {
                 Button(
                     onClick = {
                         onLeave()
