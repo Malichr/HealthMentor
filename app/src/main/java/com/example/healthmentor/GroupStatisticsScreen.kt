@@ -287,29 +287,48 @@ fun <T: Any> ChartSection(
     ) {
         val dateFormat = SimpleDateFormat("MM.dd", Locale.getDefault())
 
-        val allDates = mutableSetOf<Long>()
-        memberData.values.forEach { dataList ->
-            dataList.forEach { data ->
-                when (data) {
-                    is MemberStepCount -> allDates.add(data.date.seconds)
-                    is DistanceData -> allDates.add(data.date.seconds)
-                    is CaloriesData -> allDates.add(data.date.seconds)
-                }
+        fun Date.truncateToDay(): Date {
+            val calendar = Calendar.getInstance()
+            calendar.time = this
+            calendar.set(Calendar.HOUR_OF_DAY, 0)
+            calendar.set(Calendar.MINUTE, 0)
+            calendar.set(Calendar.SECOND, 0)
+            calendar.set(Calendar.MILLISECOND, 0)
+            return calendar.time
+        }
+
+        fun getDateFromItem(item: T): Timestamp {
+            return when (item) {
+                is MemberStepCount -> item.date
+                is DistanceData -> item.date
+                is CaloriesData -> item.date
+                else -> throw IllegalArgumentException("Ismeretlen adattípus")
             }
+        }
+
+        val allDates = mutableSetOf<Long>()
+
+        val processedMemberData = memberData.mapValues { (_, dataList) ->
+            dataList
+                .groupBy { getDateFromItem(it).toDate().truncateToDay().time }
+                .mapValues { (_, dayData) ->
+                    dayData.maxByOrNull { getDateFromItem(it).seconds }!!
+                }
+                .values.toList()
+                .also { groupedData ->
+                    groupedData.forEach { data ->
+                        allDates.add(getDateFromItem(data).toDate().truncateToDay().time)
+                    }
+                }
         }
 
         val sortedDates = allDates.sorted()
 
         val allEntries = members.mapNotNull { member ->
-            val data = memberData[member.userId] ?: return@mapNotNull null
+            val data = processedMemberData[member.userId] ?: return@mapNotNull null
 
             val entries = data.map { item ->
-                val date = when (item) {
-                    is MemberStepCount -> item.date.seconds
-                    is DistanceData -> item.date.seconds
-                    is CaloriesData -> item.date.seconds
-                    else -> 0L
-                }
+                val date = getDateFromItem(item).toDate().truncateToDay().time
                 val index = sortedDates.indexOf(date).toFloat()
                 val value = valueSelector(item)
                 entryOf(index, value)
@@ -333,7 +352,7 @@ fun <T: Any> ChartSection(
             AxisValueFormatter<AxisPosition.Horizontal.Bottom> { value, _ ->
                 val index = value.toInt()
                 if (index >= 0 && index < sortedDates.size) {
-                    val date = Date(sortedDates[index] * 1000)
+                    val date = Date(sortedDates[index])
                     dateFormat.format(date)
                 } else ""
             }
