@@ -11,6 +11,8 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.ExitToApp
+import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -86,7 +88,7 @@ fun GroupDetailsScreen(
                             .padding(start = 32.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Close,
+                            imageVector = Icons.Default.Logout,
                             contentDescription = "Kilépés a csoportból",
                             tint = MaterialTheme.colors.onError
                         )
