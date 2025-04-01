@@ -74,6 +74,23 @@ fun GroupDetailsScreen(
                             tint = MaterialTheme.colors.onError
                         )
                     }
+                } else {
+                    FloatingActionButton(
+                        onClick = {
+                            onLeave()
+                            navController.navigateUp()
+                        },
+                        backgroundColor = MaterialTheme.colors.error,
+                        modifier = Modifier
+                            .align(Alignment.BottomStart)
+                            .padding(start = 32.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Kilépés a csoportból",
+                            tint = MaterialTheme.colors.onError
+                        )
+                    }
                 }
 
                 FloatingActionButton(
@@ -285,16 +302,7 @@ fun GroupDetailsScreen(
             }
 
             if (currentUserId != group.ownerId) {
-                Button(
-                    onClick = {
-                        onLeave()
-                        navController.navigateUp()
-                    },
-                    colors = ButtonDefaults.buttonColors(backgroundColor = MaterialTheme.colors.error),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Kilépés a csoportból", color = MaterialTheme.colors.onError)
-                }
+                Spacer(modifier = Modifier.height(16.dp))
             }
 
             Spacer(modifier = Modifier.height(80.dp))
