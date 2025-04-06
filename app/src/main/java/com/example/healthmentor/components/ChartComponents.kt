@@ -20,6 +20,7 @@ import com.patrykandpatrick.vico.core.entry.entryModelOf
 import com.patrykandpatrick.vico.core.entry.entryOf
 import java.text.SimpleDateFormat
 import java.util.*
+import com.google.firebase.Timestamp
 
 private fun Date.truncateToDay(): Date {
     val calendar = Calendar.getInstance()
@@ -45,23 +46,61 @@ fun StepsChart(steps: List<MemberStepCount>) {
     val groupedByDay = steps
         .groupBy { it.date.toDate().truncateToDay() }
         .mapValues { (_, daySteps) ->
-            daySteps.maxByOrNull { it.date.toDate().time }!! 
+            daySteps.maxByOrNull { it.date.toDate().time }!!
         }
-        .values.toList()
-        .sortedBy { it.date.toDate().time }
 
-    val dateFormat = SimpleDateFormat("MM.dd", Locale.getDefault())
+    val sortedDays = groupedByDay.keys.sortedBy { it.time }
+    val minPointsNeeded = 12
+    val needExtraPoints = sortedDays.size < minPointsNeeded
 
-    val entries = groupedByDay.mapIndexed { index, stepData ->
-        entryOf(index.toFloat(), stepData.count.toFloat())
+    val allDays = if (needExtraPoints) {
+        val extraPointsNeeded = minPointsNeeded - sortedDays.size
+        val extraPointsBefore = extraPointsNeeded / 2
+        val extraPointsAfter = extraPointsNeeded - extraPointsBefore
+        
+        val calendar = Calendar.getInstance()
+
+        val daysBefore = mutableListOf<Date>()
+        if (sortedDays.isNotEmpty()) {
+            calendar.time = sortedDays.first()
+            for (i in 1..extraPointsBefore) {
+                calendar.add(Calendar.DAY_OF_MONTH, -1)
+                daysBefore.add(calendar.time)
+            }
+        }
+
+        val daysAfter = mutableListOf<Date>()
+        if (sortedDays.isNotEmpty()) {
+            calendar.time = sortedDays.last()
+            for (i in 1..extraPointsAfter) {
+                calendar.add(Calendar.DAY_OF_MONTH, 1)
+                daysAfter.add(calendar.time)
+            }
+        }
+        
+        daysBefore.reversed() + sortedDays + daysAfter
+    } else {
+        sortedDays
     }
+    
+    val dateFormat = SimpleDateFormat("MM.dd", Locale.getDefault())
+    
+    val entries = allDays.mapIndexed { index, date ->
+        val stepCount = if (groupedByDay.containsKey(date)) {
+            groupedByDay[date]!!.count.toFloat()
+        } else {
+            0f
+        }
+        entryOf(index.toFloat(), stepCount)
+    }
+    
     val entryModel = entryModelOf(entries)
-
+    
     val axisValueFormatter = remember {
         AxisValueFormatter<AxisPosition.Horizontal.Bottom> { value, _ ->
             val index = value.toInt()
-            if (index >= 0 && index < groupedByDay.size) {
-                dateFormat.format(groupedByDay[index].date.toDate())
+            if (index >= 0 && index < allDays.size) {
+                dateFormat.format(allDays[index])
             } else ""
         }
     }
@@ -105,23 +144,61 @@ fun SleepChart(sleepData: List<SleepData>) {
     val groupedByDay = sleepData
         .groupBy { it.date.toDate().truncateToDay() }
         .mapValues { (_, daySleep) ->
-            daySleep.maxByOrNull { it.date.toDate().time }!! 
+            daySleep.maxByOrNull { it.date.toDate().time }!!
         }
-        .values.toList()
-        .sortedBy { it.date.toDate().time }
 
-    val dateFormat = SimpleDateFormat("MM.dd", Locale.getDefault())
+    val sortedDays = groupedByDay.keys.sortedBy { it.time }
+    val minPointsNeeded = 12
+    val needExtraPoints = sortedDays.size < minPointsNeeded
 
-    val entries = groupedByDay.mapIndexed { index, sleep ->
-        entryOf(index.toFloat(), sleep.durationMinutes.toFloat() / 60f)
+    val allDays = if (needExtraPoints) {
+        val extraPointsNeeded = minPointsNeeded - sortedDays.size
+        val extraPointsBefore = extraPointsNeeded / 2
+        val extraPointsAfter = extraPointsNeeded - extraPointsBefore
+        
+        val calendar = Calendar.getInstance()
+
+        val daysBefore = mutableListOf<Date>()
+        if (sortedDays.isNotEmpty()) {
+            calendar.time = sortedDays.first()
+            for (i in 1..extraPointsBefore) {
+                calendar.add(Calendar.DAY_OF_MONTH, -1)
+                daysBefore.add(calendar.time)
+            }
+        }
+
+        val daysAfter = mutableListOf<Date>()
+        if (sortedDays.isNotEmpty()) {
+            calendar.time = sortedDays.last()
+            for (i in 1..extraPointsAfter) {
+                calendar.add(Calendar.DAY_OF_MONTH, 1)
+                daysAfter.add(calendar.time)
+            }
+        }
+        
+        daysBefore.reversed() + sortedDays + daysAfter
+    } else {
+        sortedDays
     }
+    
+    val dateFormat = SimpleDateFormat("MM.dd", Locale.getDefault())
+    
+    val entries = allDays.mapIndexed { index, date ->
+        val sleepDuration = if (groupedByDay.containsKey(date)) {
+            groupedByDay[date]!!.durationMinutes.toFloat() / 60f
+        } else {
+            0f
+        }
+        entryOf(index.toFloat(), sleepDuration)
+    }
+    
     val entryModel = entryModelOf(entries)
 
     val axisValueFormatter = remember {
         AxisValueFormatter<AxisPosition.Horizontal.Bottom> { value, _ ->
             val index = value.toInt()
-            if (index >= 0 && index < groupedByDay.size) {
-                dateFormat.format(groupedByDay[index].date.toDate())
+            if (index >= 0 && index < allDays.size) {
+                dateFormat.format(allDays[index])
             } else ""
         }
     }

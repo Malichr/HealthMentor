@@ -323,18 +323,56 @@ fun <T: Any> ChartSection(
         }
 
         val sortedDates = allDates.sorted()
+        
+        val minPointsNeeded = 12
+        val needExtraPoints = sortedDates.size < minPointsNeeded
+        
+        val extendedDates = if (needExtraPoints && sortedDates.isNotEmpty()) {
+            val extraPointsNeeded = minPointsNeeded - sortedDates.size
+            val extraPointsBefore = extraPointsNeeded / 2
+            val extraPointsAfter = extraPointsNeeded - extraPointsBefore
+            
+            val firstDate = Date(sortedDates.first())
+            val lastDate = Date(sortedDates.last())
+            
+            val calendar = Calendar.getInstance()
+            val datesBefore = mutableListOf<Long>()
+            calendar.time = firstDate
+            for (i in 1..extraPointsBefore) {
+                calendar.add(Calendar.DAY_OF_MONTH, -1)
+                datesBefore.add(calendar.time.truncateToDay().time)
+            }
+            
+            val datesAfter = mutableListOf<Long>()
+            calendar.time = lastDate
+            for (i in 1..extraPointsAfter) {
+                calendar.add(Calendar.DAY_OF_MONTH, 1)
+                datesAfter.add(calendar.time.truncateToDay().time)
+            }
+            
+            datesBefore.reversed() + sortedDates + datesAfter
+        } else {
+            sortedDates
+        }
 
         val allEntries = members.mapNotNull { member ->
             val data = processedMemberData[member.userId] ?: return@mapNotNull null
 
-            val entries = data.map { item ->
-                val date = getDateFromItem(item).toDate().truncateToDay().time
-                val index = sortedDates.indexOf(date).toFloat()
-                val value = valueSelector(item)
-                entryOf(index, value)
+            val entries = extendedDates.mapIndexed { index, dateMillis ->
+                val matchingItem = data.find { 
+                    getDateFromItem(it).toDate().truncateToDay().time == dateMillis 
+                }
+                
+                val value = if (matchingItem != null) {
+                    valueSelector(matchingItem)
+                } else {
+                    0f
+                }
+                
+                entryOf(index.toFloat(), value)
             }
             
-            if (entries.isEmpty()) null else entries
+            if (entries.all { it.y == 0f }) null else entries
         }
         
         if (allEntries.isEmpty()) {
@@ -351,8 +389,8 @@ fun <T: Any> ChartSection(
         val axisValueFormatter = remember {
             AxisValueFormatter<AxisPosition.Horizontal.Bottom> { value, _ ->
                 val index = value.toInt()
-                if (index >= 0 && index < sortedDates.size) {
-                    val date = Date(sortedDates[index])
+                if (index >= 0 && index < extendedDates.size) {
+                    val date = Date(extendedDates[index])
                     dateFormat.format(date)
                 } else ""
             }
