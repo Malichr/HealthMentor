@@ -58,55 +58,56 @@ fun GroupDetailsScreen(
             CommonBottomBar(navController = navController, currentRoute = "challenges")
         },
         floatingActionButton = {
-            Box(modifier = Modifier.fillMaxWidth()) {
-                if (currentUserId == group.ownerId) {
-                    FloatingActionButton(
-                        onClick = {
-                            onDelete()
-                            navController.navigateUp()
-                        },
-                        backgroundColor = MaterialTheme.colors.error,
-                        modifier = Modifier
-                            .align(Alignment.BottomStart)
-                            .padding(start = 32.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Delete,
-                            contentDescription = "Csoport törlése",
-                            tint = MaterialTheme.colors.onError
-                        )
-                    }
-                } else {
-                    FloatingActionButton(
-                        onClick = {
-                            onLeave()
-                            navController.navigateUp()
-                        },
-                        backgroundColor = MaterialTheme.colors.error,
-                        modifier = Modifier
-                            .align(Alignment.BottomStart)
-                            .padding(start = 32.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Logout,
-                            contentDescription = "Kilépés a csoportból",
-                            tint = MaterialTheme.colors.onError
-                        )
-                    }
-                }
-
-                FloatingActionButton(
-                    onClick = {
-                        navController.navigate("group_statistics/${group.id}")
-                    },
-                    backgroundColor = MaterialTheme.colors.primary,
-                    modifier = Modifier.align(Alignment.BottomEnd)
+            Box(modifier = Modifier.fillMaxSize()) {
+                Column(
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(bottom = 6.dp, end = 2.dp),
+                    horizontalAlignment = Alignment.End,
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.BarChart,
-                        contentDescription = "Csoport statisztikák",
-                        tint = MaterialTheme.colors.onPrimary
-                    )
+                    FloatingActionButton(
+                        onClick = {
+                            navController.navigate("group_statistics/${group.id}")
+                        },
+                        backgroundColor = MaterialTheme.colors.primary
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.BarChart,
+                            contentDescription = "Csoport statisztikák",
+                            tint = MaterialTheme.colors.onPrimary
+                        )
+                    }
+                    
+                    if (currentUserId == group.ownerId) {
+                        FloatingActionButton(
+                            onClick = {
+                                onDelete()
+                                navController.navigateUp()
+                            },
+                            backgroundColor = MaterialTheme.colors.error
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Delete,
+                                contentDescription = "Csoport törlése",
+                                tint = MaterialTheme.colors.onError
+                            )
+                        }
+                    } else {
+                        FloatingActionButton(
+                            onClick = {
+                                onLeave()
+                                navController.navigateUp()
+                            },
+                            backgroundColor = MaterialTheme.colors.error
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Logout,
+                                contentDescription = "Kilépés a csoportból",
+                                tint = MaterialTheme.colors.onError
+                            )
+                        }
+                    }
                 }
             }
         },
